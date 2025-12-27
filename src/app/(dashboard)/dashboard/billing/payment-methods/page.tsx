@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useOrganization } from "@clerk/nextjs";
 import {
   CreditCard,

@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useOrganization } from "@clerk/nextjs";
 import { Activity, TrendingUp, Clock, Zap, Loader2 } from "lucide-react";
 import {

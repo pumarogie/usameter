@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState } from "react";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import {
@@ -40,6 +42,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc/react";
+
+type ApiKey = {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  permissions: string[];
+  lastUsedAt: Date | null;
+  createdAt: Date;
+};
 
 export default function ApiKeysPage() {
   const { user } = useUser();
@@ -276,7 +287,7 @@ export default function ApiKeysPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {apiKeys.map((key) => (
+                {apiKeys.map((key: ApiKey) => (
                   <TableRow key={key.id}>
                     <TableCell className="font-medium">{key.name}</TableCell>
                     <TableCell>
