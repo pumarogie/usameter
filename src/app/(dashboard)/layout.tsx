@@ -3,6 +3,9 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Header } from "@/components/layout/Header";
 import { TRPCReactProvider } from "@/lib/trpc/react";
 
+// Disable static generation for all dashboard pages (they use Clerk hooks)
+export const dynamic = "force-dynamic";
+
 export default function DashboardLayout({
   children,
 }: {
