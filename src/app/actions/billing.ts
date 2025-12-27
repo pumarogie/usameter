@@ -20,7 +20,9 @@ export async function generateInvoice(
     });
 
     revalidatePath("/billing");
-    revalidatePath(`/billing/invoice/${result.id}`);
+    if (result && typeof result === "object" && "id" in result) {
+      revalidatePath(`/billing/invoice/${result.id}`);
+    }
     return { success: true, data: result };
   } catch (error) {
     console.error("Error generating invoice:", error);

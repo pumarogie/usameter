@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
                 usageByType.map(
                   async (item: {
                     eventType: string;
-                    _sum: { quantity: bigint | null };
+                    _sum: { quantity: unknown };
                   }) => {
                     const totalQuantity = Number(item._sum.quantity || 0);
 

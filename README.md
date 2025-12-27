@@ -15,6 +15,55 @@ Usameter solves the critical challenge of usage-based billing: accurately measur
 - **Invoice Generation** — Detailed invoices with full audit trail to source events
 - **Rate Limiting** — Configurable per-second, per-minute, and per-hour limits
 
+## Real-World Example
+
+**Scenario:** You run an AI image generation API. Customers sign up, get API keys, and call your `/generate` endpoint to create images.
+
+**The Problem:** How do you track how many images each customer generates and bill them based on their actual usage?
+
+**The Solution:** Integrate Usameter into your API.
+
+```
+┌──────────────┐     ┌──────────────────┐     ┌─────────────┐
+│ Your Customer│────▶│   Your API       │────▶│  Usameter   │
+│              │     │ (generates image)│     │ (tracks it) │
+└──────────────┘     └──────────────────┘     └─────────────┘
+                                                     │
+                                                     ▼
+                                              ┌─────────────┐
+                                              │ End of Month│
+                                              │ Invoice     │
+                                              └─────────────┘
+```
+
+**Integration (one line in your API):**
+
+```typescript
+// After successfully generating an image in your API
+await fetch('https://your-usameter-instance.com/api/v1/events', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer usa_your_api_key',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    event_type: 'image_generated',
+    tenant_id: 'customer_123',  // Your customer's ID in your system
+    quantity: 1,
+    metadata: { size: '1024x1024', model: 'dall-e-3' }
+  })
+});
+```
+
+**What Usameter Does:**
+1. Records every event with the customer ID and event type
+2. Aggregates usage per customer per billing period
+3. Applies your pricing tiers (e.g., first 1,000 images free, then $0.02/image)
+4. Enforces quotas (block customers who exceed limits)
+5. Generates invoices at the end of each billing cycle
+
+**Result:** At the end of the month, you know Customer 123 generated 5,247 images and owe $84.94 based on your pricing tiers.
+
 ## Architecture
 
 ```

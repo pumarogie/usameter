@@ -8,6 +8,7 @@ import { snapshotRouter } from "./routers/snapshot";
 import { subscriptionRouter } from "./routers/subscription";
 import { apiKeysRouter } from "./routers/apiKeys";
 import { teamRouter } from "./routers/team";
+import { customersRouter } from "./routers/customers";
 
 export const appRouter = router({
   usage: usageRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   subscription: subscriptionRouter,
   apiKeys: apiKeysRouter,
   team: teamRouter,
+  customers: customersRouter,
 });
 
 export type AppRouter = typeof appRouter;

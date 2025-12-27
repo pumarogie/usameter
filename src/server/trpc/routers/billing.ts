@@ -7,7 +7,7 @@ import { prisma } from "@/server/db/prisma";
 
 type TransactionClient = Omit<
   PrismaClient,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
 >;
 
 type Invoice = {
