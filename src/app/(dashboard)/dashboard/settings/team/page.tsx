@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { useOrganization, useUser } from "@clerk/nextjs";
-import {  Plus, Mail, MoreHorizontal, UserMinus, Shield } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Mail, MoreHorizontal, UserMinus, Shield } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -156,14 +162,18 @@ export default function TeamPage() {
                   <option value="viewer">Viewer</option>
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  {inviteRole === "admin" && "Can manage team members and billing"}
+                  {inviteRole === "admin" &&
+                    "Can manage team members and billing"}
                   {inviteRole === "member" && "Can view and manage usage data"}
                   {inviteRole === "viewer" && "Can only view usage data"}
                 </p>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowInviteDialog(false)}
+              >
                 Cancel
               </Button>
               <Button onClick={handleInvite} disabled={!inviteEmail.trim()}>
@@ -215,7 +225,10 @@ export default function TeamPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={roleColors[member.role]} className="capitalize">
+                    <Badge
+                      variant={roleColors[member.role]}
+                      className="capitalize"
+                    >
                       {member.role}
                     </Badge>
                   </TableCell>

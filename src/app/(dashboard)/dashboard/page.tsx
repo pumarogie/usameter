@@ -1,7 +1,21 @@
 "use client";
 
-import { Activity, CreditCard, DollarSign, Users, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Activity,
+  CreditCard,
+  DollarSign,
+  Users,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const stats = [
@@ -40,10 +54,30 @@ const stats = [
 ];
 
 const recentActivity = [
-  { event: "API request", customer: "Acme Corp", count: 15234, time: "2 min ago" },
-  { event: "Storage upload", customer: "TechStart", count: 892, time: "5 min ago" },
-  { event: "Compute hours", customer: "DataFlow", count: 45, time: "12 min ago" },
-  { event: "API request", customer: "CloudBase", count: 8721, time: "18 min ago" },
+  {
+    event: "API request",
+    customer: "Acme Corp",
+    count: 15234,
+    time: "2 min ago",
+  },
+  {
+    event: "Storage upload",
+    customer: "TechStart",
+    count: 892,
+    time: "5 min ago",
+  },
+  {
+    event: "Compute hours",
+    customer: "DataFlow",
+    count: 45,
+    time: "12 min ago",
+  },
+  {
+    event: "API request",
+    customer: "CloudBase",
+    count: 8721,
+    time: "18 min ago",
+  },
   { event: "Bandwidth", customer: "StreamCo", count: 2341, time: "25 min ago" },
 ];
 
@@ -61,7 +95,9 @@ export default function DashboardPage() {
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -72,7 +108,11 @@ export default function DashboardPage() {
                 ) : (
                   <ArrowDownRight className="h-3 w-3 text-red-500" />
                 )}
-                <span className={stat.trend === "up" ? "text-green-500" : "text-red-500"}>
+                <span
+                  className={
+                    stat.trend === "up" ? "text-green-500" : "text-red-500"
+                  }
+                >
                   {stat.change}
                 </span>
                 <span>{stat.description}</span>
@@ -105,19 +145,29 @@ export default function DashboardPage() {
         <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest usage events from your customers</CardDescription>
+            <CardDescription>
+              Latest usage events from your customers
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentActivity.map((activity, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">{activity.customer}</p>
-                    <p className="text-xs text-muted-foreground">{activity.event}</p>
+                    <p className="text-sm font-medium leading-none">
+                      {activity.customer}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {activity.event}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <Badge variant="secondary">{activity.count.toLocaleString()}</Badge>
-                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                    <Badge variant="secondary">
+                      {activity.count.toLocaleString()}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activity.time}
+                    </p>
                   </div>
                 </div>
               ))}

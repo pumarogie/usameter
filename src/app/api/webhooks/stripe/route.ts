@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   if (!signature) {
     return NextResponse.json(
       { error: "Missing stripe-signature header" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     console.error("STRIPE_WEBHOOK_SECRET is not set");
     return NextResponse.json(
       { error: "Webhook secret not configured" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     console.error("Webhook signature verification failed:", err);
     return NextResponse.json(
       { error: "Webhook signature verification failed" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -77,13 +77,13 @@ export async function POST(req: NextRequest) {
     console.error("Error processing webhook:", error);
     return NextResponse.json(
       { error: "Webhook processing failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 async function handleCheckoutSessionCompleted(
-  session: Stripe.Checkout.Session
+  session: Stripe.Checkout.Session,
 ) {
   const organizationId = session.metadata?.organizationId;
   const subscriptionId = session.subscription as string;
@@ -95,7 +95,7 @@ async function handleCheckoutSessionCompleted(
 
   // The subscription will be created/updated by the subscription.created event
   console.log(
-    `Checkout completed for org ${organizationId}, subscription ${subscriptionId}`
+    `Checkout completed for org ${organizationId}, subscription ${subscriptionId}`,
   );
 }
 
@@ -120,7 +120,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   }
 
   // Map Stripe status to our status
-  const statusMap: Record<string, "ACTIVE" | "CANCELED" | "PAST_DUE" | "TRIALING" | "UNPAID"> = {
+  const statusMap: Record<
+    string,
+    "ACTIVE" | "CANCELED" | "PAST_DUE" | "TRIALING" | "UNPAID"
+  > = {
     active: "ACTIVE",
     canceled: "CANCELED",
     past_due: "PAST_DUE",
@@ -172,7 +175,9 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     },
   });
 
-  console.log(`Subscription ${subscription.id} updated for org ${organizationId}`);
+  console.log(
+    `Subscription ${subscription.id} updated for org ${organizationId}`,
+  );
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
@@ -190,7 +195,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   // @ts-expect-error - Stripe types may vary by API version
   const sub = invoice.subscription;
-  const subscriptionId = typeof sub === 'string' ? sub : sub?.id;
+  const subscriptionId = typeof sub === "string" ? sub : sub?.id;
 
   if (subscriptionId) {
     // Update subscription status to active if it was past_due
@@ -209,7 +214,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   // @ts-expect-error - Stripe types may vary by API version
   const sub = invoice.subscription;
-  const subscriptionId = typeof sub === 'string' ? sub : sub?.id;
+  const subscriptionId = typeof sub === "string" ? sub : sub?.id;
 
   if (subscriptionId) {
     await prisma.subscription.updateMany({

@@ -8,7 +8,7 @@ export async function generateInvoice(
   data: {
     periodStart: Date;
     periodEnd: Date;
-  }
+  },
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -57,7 +57,7 @@ export async function listInvoices(
     endDate?: Date;
     limit?: number;
     cursor?: string;
-  } = {}
+  } = {},
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -85,7 +85,7 @@ export async function getBillingReport(
   options: {
     startDate: Date;
     endDate: Date;
-  }
+  },
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -104,4 +104,3 @@ export async function getBillingReport(
     };
   }
 }
-

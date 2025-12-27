@@ -36,7 +36,7 @@ const CIRCUIT_BREAKER_RESET_TIME = 30000; // 30 seconds
 
 export async function withRedisFallback<T>(
   redisOp: () => Promise<T>,
-  dbFallback: () => Promise<T>
+  dbFallback: () => Promise<T>,
 ): Promise<T> {
   if (circuitBreakerOpen) {
     console.warn("Circuit breaker open, using DB fallback");
@@ -55,7 +55,7 @@ export async function withRedisFallback<T>(
   } catch (error) {
     circuitBreakerFailures++;
     console.error("Redis operation failed:", error);
-    
+
     if (circuitBreakerFailures >= CIRCUIT_BREAKER_THRESHOLD) {
       circuitBreakerOpen = true;
       setTimeout(() => {
@@ -74,7 +74,7 @@ export function getRollingCounterKey(
   tenantId: string,
   eventType: string,
   window: "1h" | "24h" | "7d" | "30d",
-  bucket: string
+  bucket: string,
 ): string {
   return `usage:tenant:${tenantId}:event:${eventType}:rolling:${window}:${bucket}`;
 }
@@ -94,7 +94,7 @@ export function getHotTenantsSortedSetKey(): string {
 export function getQuotaKey(
   tenantId: string,
   eventType: string,
-  periodId: string
+  periodId: string,
 ): string {
   return `quota:tenant:${tenantId}:event:${eventType}:period:${periodId}`;
 }
@@ -112,7 +112,7 @@ export function getAggregationKey(
   eventType: string,
   granularity: "hour" | "day" | "month",
   start: string,
-  end: string
+  end: string,
 ): string {
   return `agg:tenant:${tenantId}:event:${eventType}:${granularity}:${start}:${end}`;
 }
@@ -122,7 +122,7 @@ export function getOrgAggregationKey(
   eventType: string,
   granularity: "hour" | "day" | "month",
   start: string,
-  end: string
+  end: string,
 ): string {
   return `agg:org:${organizationId}:event:${eventType}:${granularity}:${start}:${end}`;
 }
@@ -134,14 +134,14 @@ export async function incrementRollingCounter(
   eventType: string,
   quantity: number,
   window: "1h" | "24h" | "7d" | "30d",
-  bucket: string
+  bucket: string,
 ): Promise<number> {
   const key = getRollingCounterKey(tenantId, eventType, window, bucket);
   const client = getRedisClient();
-  
+
   const pipeline = client.pipeline();
   pipeline.incrbyfloat(key, quantity);
-  
+
   // Set TTL based on window
   const ttlMap = {
     "1h": 7200, // 2 hours
@@ -150,17 +150,21 @@ export async function incrementRollingCounter(
     "30d": 2592000, // 30 days + buffer
   };
   pipeline.expire(key, ttlMap[window]);
-  
+
   const results = await pipeline.exec();
   const value = results?.[0]?.[1];
-  return typeof value === "number" ? value : (typeof value === "string" ? parseFloat(value) : 0);
+  return typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? parseFloat(value)
+      : 0;
 }
 
 export async function getRollingCounter(
   tenantId: string,
   eventType: string,
   window: "1h" | "24h" | "7d" | "30d",
-  bucket: string
+  bucket: string,
 ): Promise<number> {
   const key = getRollingCounterKey(tenantId, eventType, window, bucket);
   const client = getRedisClient();
@@ -172,19 +176,31 @@ export async function updateHotTenantMetrics(
   tenantId: string,
   eventsPerMin: number,
   costPerHour: number,
-  quotaUsagePct: number
+  quotaUsagePct: number,
 ): Promise<void> {
   const client = getRedisClient();
   const pipeline = client.pipeline();
-  
-  pipeline.setex(getHotTenantKey(tenantId, "events_per_min"), 300, eventsPerMin.toString());
-  pipeline.setex(getHotTenantKey(tenantId, "cost_per_hour"), 300, costPerHour.toString());
-  pipeline.setex(getHotTenantKey(tenantId, "quota_usage_pct"), 300, quotaUsagePct.toString());
-  
+
+  pipeline.setex(
+    getHotTenantKey(tenantId, "events_per_min"),
+    300,
+    eventsPerMin.toString(),
+  );
+  pipeline.setex(
+    getHotTenantKey(tenantId, "cost_per_hour"),
+    300,
+    costPerHour.toString(),
+  );
+  pipeline.setex(
+    getHotTenantKey(tenantId, "quota_usage_pct"),
+    300,
+    quotaUsagePct.toString(),
+  );
+
   // Update sorted set for top tenants
   pipeline.zadd(getHotTenantsSortedSetKey(), eventsPerMin, tenantId);
   pipeline.expire(getHotTenantsSortedSetKey(), 300);
-  
+
   await pipeline.exec();
 }
 
@@ -203,7 +219,7 @@ export async function checkAndIncrementQuota(
   tenantId: string,
   eventType: string,
   quantity: number,
-  periodId: string
+  periodId: string,
 ): Promise<{ allowed: boolean; current: number; limit: number }> {
   const client = getRedisClient();
 
@@ -241,7 +257,7 @@ export async function checkQuotaEnhanced(
     gracePeriodEnd?: Date;
     overageAllowed?: number;
     resetAt?: Date;
-  }
+  },
 ): Promise<QuotaCheckResult> {
   const client = getRedisClient();
 
@@ -272,7 +288,8 @@ export async function checkQuotaEnhanced(
   }
 
   // Check grace period
-  const inGracePeriod = options.gracePeriodEnd && new Date() < options.gracePeriodEnd;
+  const inGracePeriod =
+    options.gracePeriodEnd && new Date() < options.gracePeriodEnd;
 
   // Check soft limit warning
   if (options.softLimit && projectedUsage > options.softLimit) {
@@ -306,7 +323,7 @@ export async function checkQuotaEnhanced(
 // Rate limiting using sliding window algorithm
 export function getRateLimitKey(
   identifier: string,
-  window: "second" | "minute" | "hour"
+  window: "second" | "minute" | "hour",
 ): string {
   const now = new Date();
   let bucket: string;
@@ -340,7 +357,7 @@ export async function checkRateLimit(
     perSecond?: number;
     perMinute?: number;
     perHour?: number;
-  }
+  },
 ): Promise<RateLimitResult> {
   const client = getRedisClient();
   const pipeline = client.pipeline();
@@ -364,7 +381,12 @@ export async function checkRateLimit(
   }
 
   if (checks.length === 0) {
-    return { allowed: true, remaining: Infinity, limit: Infinity, resetAt: now };
+    return {
+      allowed: true,
+      remaining: Infinity,
+      limit: Infinity,
+      resetAt: now,
+    };
   }
 
   // Get current counts for all windows
@@ -385,7 +407,9 @@ export async function checkRateLimit(
 
   for (let i = 0; i < checks.length; i++) {
     const check = checks[i];
-    const currentCount = results?.[i]?.[1] ? parseInt(String(results[i]![1]), 10) : 0;
+    const currentCount = results?.[i]?.[1]
+      ? parseInt(String(results[i]![1]), 10)
+      : 0;
     const remaining = Math.max(0, check.limit - currentCount - 1);
 
     if (currentCount >= check.limit) {
@@ -451,7 +475,7 @@ export async function checkRateLimit(
 // Check idempotency key exists
 export async function checkIdempotencyKey(
   organizationId: string,
-  idempotencyKey: string
+  idempotencyKey: string,
 ): Promise<string | null> {
   const client = getRedisClient();
   const key = `idempotency:${organizationId}:${idempotencyKey}`;
@@ -463,7 +487,7 @@ export async function setIdempotencyKey(
   organizationId: string,
   idempotencyKey: string,
   eventId: string,
-  ttl: number = 86400 // 24 hours default
+  ttl: number = 86400, // 24 hours default
 ): Promise<void> {
   const client = getRedisClient();
   const key = `idempotency:${organizationId}:${idempotencyKey}`;
@@ -475,7 +499,7 @@ export async function getCachedAggregation(
   eventType: string,
   granularity: "hour" | "day" | "month",
   start: string,
-  end: string
+  end: string,
 ): Promise<number | null> {
   const key = getAggregationKey(tenantId, eventType, granularity, start, end);
   const client = getRedisClient();
@@ -490,7 +514,7 @@ export async function setCachedAggregation(
   start: string,
   end: string,
   value: number,
-  ttl: number = 900 // 15 minutes default
+  ttl: number = 900, // 15 minutes default
 ): Promise<void> {
   const key = getAggregationKey(tenantId, eventType, granularity, start, end);
   const client = getRedisClient();
@@ -499,7 +523,10 @@ export async function setCachedAggregation(
 
 export async function getTopHotTenants(limit: number = 10): Promise<string[]> {
   const client = getRedisClient();
-  const tenantIds = await client.zrevrange(getHotTenantsSortedSetKey(), 0, limit - 1);
+  const tenantIds = await client.zrevrange(
+    getHotTenantsSortedSetKey(),
+    0,
+    limit - 1,
+  );
   return tenantIds;
 }
-

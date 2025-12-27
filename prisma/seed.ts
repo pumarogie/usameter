@@ -73,7 +73,9 @@ async function main() {
   const allPlans = await prisma.subscriptionPlan.findMany();
   console.log("\nCreated plans:");
   allPlans.forEach((plan) => {
-    console.log(`  - ${plan.name}: ${plan.stripePriceId} ($${plan.basePrice / 100}/mo)`);
+    console.log(
+      `  - ${plan.name}: ${plan.stripePriceId} ($${plan.basePrice / 100}/mo)`,
+    );
   });
 
   console.log("\nSeeding complete!");

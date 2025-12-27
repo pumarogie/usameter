@@ -91,7 +91,7 @@ export const subscriptionRouter = router({
         planId: z.string(),
         email: z.string().email(),
         organizationName: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const plan = await prisma.subscriptionPlan.findUnique({
@@ -127,7 +127,8 @@ export const subscriptionRouter = router({
         stripeCustomerId = customer.id;
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       const session = await createCheckoutSession({
         customerId: stripeCustomerId,
@@ -157,7 +158,8 @@ export const subscriptionRouter = router({
         });
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
       const session = await createBillingPortalSession({
         customerId: subscription.stripeCustomerId,
@@ -181,7 +183,7 @@ export const subscriptionRouter = router({
 
       const stripeInvoices = await getStripeInvoices(
         subscription.stripeCustomerId,
-        10
+        10,
       );
 
       return {
@@ -219,11 +221,17 @@ export const subscriptionRouter = router({
         amount: upcoming.amount_due,
         periodStart: new Date(upcoming.period_start * 1000),
         periodEnd: new Date(upcoming.period_end * 1000),
-        lines: upcoming.lines.data.map((line: { description: string | null; amount: number; quantity: number | null }) => ({
-          description: line.description,
-          amount: line.amount,
-          quantity: line.quantity,
-        })),
+        lines: upcoming.lines.data.map(
+          (line: {
+            description: string | null;
+            amount: number;
+            quantity: number | null;
+          }) => ({
+            description: line.description,
+            amount: line.amount,
+            quantity: line.quantity,
+          }),
+        ),
       };
     }),
 
@@ -257,8 +265,9 @@ export const subscriptionRouter = router({
       });
 
       const totalEvents = usageEvents.reduce(
-        (sum: number, event: UsageEventGroupBy) => sum + Number(event._sum.quantity || 0),
-        0
+        (sum: number, event: UsageEventGroupBy) =>
+          sum + Number(event._sum.quantity || 0),
+        0,
       );
 
       const includedEvents = subscription.plan.includedEvents;

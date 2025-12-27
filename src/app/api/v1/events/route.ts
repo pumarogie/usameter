@@ -45,7 +45,7 @@ interface QuotaViolation {
  */
 async function findOrCreateTenants(
   organizationId: string,
-  tenantExternalIds: string[]
+  tenantExternalIds: string[],
 ): Promise<Map<string, string>> {
   const uniqueIds = [...new Set(tenantExternalIds)];
 
@@ -59,7 +59,9 @@ async function findOrCreateTenants(
   });
 
   const tenantMap = new Map<string, string>();
-  existingTenants.forEach((t: { id: string; externalId: string }) => tenantMap.set(t.externalId, t.id));
+  existingTenants.forEach((t: { id: string; externalId: string }) =>
+    tenantMap.set(t.externalId, t.id),
+  );
 
   // Find missing tenants
   const missingIds = uniqueIds.filter((id) => !tenantMap.has(id));
@@ -82,11 +84,13 @@ async function findOrCreateTenants(
           },
           update: {},
           select: { id: true, externalId: true },
-        })
-      )
+        }),
+      ),
     );
 
-    created.forEach((t: { id: string; externalId: string }) => tenantMap.set(t.externalId, t.id));
+    created.forEach((t: { id: string; externalId: string }) =>
+      tenantMap.set(t.externalId, t.id),
+    );
   }
 
   return tenantMap;
@@ -98,7 +102,7 @@ async function findOrCreateTenants(
  */
 async function checkIdempotency(
   organizationId: string,
-  events: ParsedEvent[]
+  events: ParsedEvent[],
 ): Promise<Map<string, string>> {
   const duplicates = new Map<string, string>();
 
@@ -110,12 +114,12 @@ async function checkIdempotency(
     eventsWithKeys.map(async (event) => {
       const existingId = await withRedisFallback(
         () => checkIdempotencyKey(organizationId, event.idempotency_key!),
-        async () => null
+        async () => null,
       );
       if (existingId) {
         duplicates.set(event.idempotency_key!, existingId);
       }
-    })
+    }),
   );
 
   // For keys not in Redis, check database
@@ -132,13 +136,17 @@ async function checkIdempotency(
       select: { id: true, idempotencyKey: true },
     });
 
-    existingEvents.forEach((e: { id: string; idempotencyKey: string | null }) => {
-      if (e.idempotencyKey) {
-        duplicates.set(e.idempotencyKey, e.id);
-        // Cache in Redis for future lookups
-        setIdempotencyKey(organizationId, e.idempotencyKey, e.id).catch(() => {});
-      }
-    });
+    existingEvents.forEach(
+      (e: { id: string; idempotencyKey: string | null }) => {
+        if (e.idempotencyKey) {
+          duplicates.set(e.idempotencyKey, e.id);
+          // Cache in Redis for future lookups
+          setIdempotencyKey(organizationId, e.idempotencyKey, e.id).catch(
+            () => {},
+          );
+        }
+      },
+    );
   }
 
   return duplicates;
@@ -148,12 +156,20 @@ async function checkIdempotency(
  * Check quotas for all events grouped by tenant/eventType
  */
 async function checkQuotas(
-  events: Array<ParsedEvent & { internalTenantId: string }>
+  events: Array<ParsedEvent & { internalTenantId: string }>,
 ): Promise<QuotaViolation[]> {
   const violations: QuotaViolation[] = [];
 
   // Group events by tenant + eventType to aggregate quantities
-  const grouped = new Map<string, { tenantId: string; eventType: string; quantity: number; externalTenantId: string }>();
+  const grouped = new Map<
+    string,
+    {
+      tenantId: string;
+      eventType: string;
+      quantity: number;
+      externalTenantId: string;
+    }
+  >();
 
   for (const event of events) {
     const key = `${event.internalTenantId}:${event.event_type}`;
@@ -172,16 +188,18 @@ async function checkQuotas(
 
   // Check quotas in parallel
   await Promise.all(
-    Array.from(grouped.values()).map(async ({ tenantId, eventType, quantity, externalTenantId }) => {
-      const result = await checkQuota({ tenantId, eventType, quantity });
-      if (!result.allowed) {
-        violations.push({
-          tenant_id: externalTenantId,
-          event_type: eventType,
-          error: buildQuotaErrorResponse(result),
-        });
-      }
-    })
+    Array.from(grouped.values()).map(
+      async ({ tenantId, eventType, quantity, externalTenantId }) => {
+        const result = await checkQuota({ tenantId, eventType, quantity });
+        if (!result.allowed) {
+          violations.push({
+            tenant_id: externalTenantId,
+            event_type: eventType,
+            error: buildQuotaErrorResponse(result),
+          });
+        }
+      },
+    ),
   );
 
   return violations;
@@ -194,7 +212,7 @@ async function processSingleEvent(
   event: ParsedEvent,
   organizationId: string,
   tenantMap: Map<string, string>,
-  duplicates: Map<string, string>
+  duplicates: Map<string, string>,
 ): Promise<ProcessedEvent> {
   // Check for duplicate
   if (event.idempotency_key && duplicates.has(event.idempotency_key)) {
@@ -215,7 +233,10 @@ async function processSingleEvent(
       organizationId,
       eventType: event.event_type,
       quantity: event.quantity,
-      metadata: (event.metadata ?? {}) as Record<string, string | number | boolean>,
+      metadata: (event.metadata ?? {}) as Record<
+        string,
+        string | number | boolean
+      >,
       timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
       idempotencyKey: event.idempotency_key,
     },
@@ -223,7 +244,11 @@ async function processSingleEvent(
 
   // Cache idempotency key if provided
   if (event.idempotency_key) {
-    setIdempotencyKey(organizationId, event.idempotency_key, usageEvent.id).catch(() => {});
+    setIdempotencyKey(
+      organizationId,
+      event.idempotency_key,
+      usageEvent.id,
+    ).catch(() => {});
   }
 
   // Update rolling counters (fire and forget)
@@ -234,12 +259,24 @@ async function processSingleEvent(
   withRedisFallback(
     async () => {
       await Promise.all([
-        incrementRollingCounter(tenantId, event.event_type, event.quantity, "1h", hourBucket),
-        incrementRollingCounter(tenantId, event.event_type, event.quantity, "24h", dayBucket),
+        incrementRollingCounter(
+          tenantId,
+          event.event_type,
+          event.quantity,
+          "1h",
+          hourBucket,
+        ),
+        incrementRollingCounter(
+          tenantId,
+          event.event_type,
+          event.quantity,
+          "24h",
+          dayBucket,
+        ),
       ]);
       return null;
     },
-    async () => null
+    async () => null,
   ).catch(() => {});
 
   return {
@@ -258,7 +295,7 @@ export async function POST(req: NextRequest) {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         { error: "Missing or invalid Authorization header" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -268,14 +305,14 @@ export async function POST(req: NextRequest) {
     if (!keyValidation.valid) {
       return NextResponse.json(
         { error: keyValidation.reason },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (!hasPermission(keyValidation, "events:write")) {
       return NextResponse.json(
         { error: "Insufficient permissions. Required: events:write" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -294,7 +331,13 @@ export async function POST(req: NextRequest) {
             perMinute: rateLimit.requestsPerMinute ?? undefined,
             perHour: rateLimit.requestsPerHour ?? undefined,
           }),
-        async () => ({ allowed: true, remaining: Infinity, limit: Infinity, resetAt: new Date(), retryAfter: undefined as number | undefined })
+        async () => ({
+          allowed: true,
+          remaining: Infinity,
+          limit: Infinity,
+          resetAt: new Date(),
+          retryAfter: undefined as number | undefined,
+        }),
       );
 
       if (!rateLimitResult.allowed) {
@@ -317,7 +360,7 @@ export async function POST(req: NextRequest) {
               "X-RateLimit-Remaining": String(rateLimitResult.remaining),
               "X-RateLimit-Reset": rateLimitResult.resetAt.toISOString(),
             },
-          }
+          },
         );
       }
     }
@@ -334,7 +377,7 @@ export async function POST(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json(
           { error: "Invalid request body", details: parsed.error.errors },
-          { status: 400 }
+          { status: 400 },
         );
       }
       events = parsed.data.events;
@@ -343,7 +386,7 @@ export async function POST(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json(
           { error: "Invalid request body", details: parsed.error.errors },
-          { status: 400 }
+          { status: 400 },
         );
       }
       events = [parsed.data];
@@ -351,7 +394,10 @@ export async function POST(req: NextRequest) {
 
     // Step 1: Find or create all tenants in batch (fixes N+1)
     const tenantExternalIds = events.map((e) => e.tenant_id);
-    const tenantMap = await findOrCreateTenants(organizationId, tenantExternalIds);
+    const tenantMap = await findOrCreateTenants(
+      organizationId,
+      tenantExternalIds,
+    );
 
     // Step 2: Check idempotency for all events
     const duplicates = await checkIdempotency(organizationId, events);
@@ -374,15 +420,15 @@ export async function POST(req: NextRequest) {
           code: "QUOTA_EXCEEDED",
           violations: quotaViolations,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     // Step 5: Process all events
     const processedEvents = await Promise.all(
       events.map((event) =>
-        processSingleEvent(event, organizationId, tenantMap, duplicates)
-      )
+        processSingleEvent(event, organizationId, tenantMap, duplicates),
+      ),
     );
 
     // Build response
@@ -410,7 +456,7 @@ export async function POST(req: NextRequest) {
     console.error("Error processing event:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -422,7 +468,7 @@ export async function GET(req: NextRequest) {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         { error: "Missing or invalid Authorization header" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -432,14 +478,14 @@ export async function GET(req: NextRequest) {
     if (!keyValidation.valid) {
       return NextResponse.json(
         { error: keyValidation.reason },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (!hasPermission(keyValidation, "usage:read")) {
       return NextResponse.json(
         { error: "Insufficient permissions. Required: usage:read" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -495,7 +541,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
-      events: events.map((e: typeof events[number]) => ({
+      events: events.map((e: (typeof events)[number]) => ({
         id: e.id,
         tenant_id: e.tenant.externalId,
         event_type: e.eventType,
@@ -511,7 +557,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching events:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -111,7 +111,7 @@ export async function getUpcomingInvoice(customerId: string) {
 export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string,
-  webhookSecret: string
+  webhookSecret: string,
 ) {
   return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 }

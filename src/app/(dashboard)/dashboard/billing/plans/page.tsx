@@ -4,7 +4,14 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { Check, Zap, Building2, Rocket, Loader2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc/react";
@@ -66,33 +73,38 @@ function PlansContent() {
   const { user } = useUser();
 
   // Fetch plans from database
-  const { data: plans, isLoading: plansLoading } = trpc.subscription.getPlans.useQuery();
+  const { data: plans, isLoading: plansLoading } =
+    trpc.subscription.getPlans.useQuery();
 
   // Fetch current subscription
-  const { data: currentSubscription } = trpc.subscription.getCurrentSubscription.useQuery(
-    { organizationId: organization?.id ?? "" },
-    { enabled: !!organization?.id }
-  );
+  const { data: currentSubscription } =
+    trpc.subscription.getCurrentSubscription.useQuery(
+      { organizationId: organization?.id ?? "" },
+      { enabled: !!organization?.id },
+    );
 
   // Create checkout session mutation
-  const createCheckoutSession = trpc.subscription.createCheckoutSession.useMutation({
-    onSuccess: (data) => {
-      if (data.sessionUrl) {
-        window.location.href = data.sessionUrl;
-      }
-    },
-    onError: (err) => {
-      setError(err.message);
-      setLoading(null);
-    },
-  });
+  const createCheckoutSession =
+    trpc.subscription.createCheckoutSession.useMutation({
+      onSuccess: (data) => {
+        if (data.sessionUrl) {
+          window.location.href = data.sessionUrl;
+        }
+      },
+      onError: (err) => {
+        setError(err.message);
+        setLoading(null);
+      },
+    });
 
   const currentPlanId = currentSubscription?.plan?.id;
 
   const handleSelectPlan = async (planId: string) => {
     if (planId === currentPlanId) return;
     if (!organization?.id || !user?.primaryEmailAddress?.emailAddress) {
-      setError("Please ensure you have an organization selected and email verified");
+      setError(
+        "Please ensure you have an organization selected and email verified",
+      );
       return;
     }
 
@@ -187,12 +199,16 @@ function PlansContent() {
                 <div className="text-sm text-muted-foreground">
                   <p>{plan.includedEvents.toLocaleString()} events included</p>
                   <p>
-                    ${(plan.overageRate / 100).toFixed(2)} per 1,000 overage events
+                    ${(plan.overageRate / 100).toFixed(2)} per 1,000 overage
+                    events
                   </p>
                 </div>
                 <ul className="space-y-2">
                   {features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm">
+                    <li
+                      key={feature}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <Check className="h-4 w-4 text-primary" />
                       {feature}
                     </li>
@@ -202,7 +218,9 @@ function PlansContent() {
               <CardFooter>
                 <Button
                   className="w-full"
-                  variant={isCurrent ? "outline" : isPopular ? "default" : "secondary"}
+                  variant={
+                    isCurrent ? "outline" : isPopular ? "default" : "secondary"
+                  }
                   disabled={isCurrent || loading === plan.id}
                   onClick={() => handleSelectPlan(plan.id)}
                 >
@@ -227,7 +245,8 @@ function PlansContent() {
         <CardHeader>
           <CardTitle>Need a custom plan?</CardTitle>
           <CardDescription>
-            Contact our sales team for custom pricing and features tailored to your needs.
+            Contact our sales team for custom pricing and features tailored to
+            your needs.
           </CardDescription>
         </CardHeader>
         <CardContent>

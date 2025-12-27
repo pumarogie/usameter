@@ -50,7 +50,8 @@ async function syncSubscriptions() {
     const now = new Date();
 
     // Use created timestamp as fallback for period start
-    const periodStartTimestamp = (sub as any).current_period_start || sub.created;
+    const periodStartTimestamp =
+      (sub as any).current_period_start || sub.created;
     const periodEndTimestamp = (sub as any).current_period_end;
 
     const currentPeriodStart = periodStartTimestamp
@@ -61,7 +62,9 @@ async function syncSubscriptions() {
       ? new Date(periodEndTimestamp * 1000)
       : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
 
-    console.log(`  Period: ${currentPeriodStart.toISOString()} - ${currentPeriodEnd.toISOString()}`);
+    console.log(
+      `  Period: ${currentPeriodStart.toISOString()} - ${currentPeriodEnd.toISOString()}`,
+    );
 
     // Upsert the subscription
     const result = await prisma.subscription.upsert({
@@ -93,7 +96,9 @@ async function syncSubscriptions() {
 
     console.log(`✓ Synced subscription ${sub.id} for org ${organizationId}`);
     console.log(`  Plan: ${plan.name}, Status: ACTIVE`);
-    console.log(`  Period: ${currentPeriodStart.toISOString()} - ${currentPeriodEnd.toISOString()}`);
+    console.log(
+      `  Period: ${currentPeriodStart.toISOString()} - ${currentPeriodEnd.toISOString()}`,
+    );
   }
 
   console.log("\nDone!");

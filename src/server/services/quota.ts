@@ -20,7 +20,7 @@ export interface EnhancedQuotaResult extends QuotaCheckResult {
  * Supports soft limits, grace periods, and different enforcement modes
  */
 export async function checkQuota(
-  options: QuotaCheckOptions
+  options: QuotaCheckOptions,
 ): Promise<EnhancedQuotaResult> {
   const { tenantId, eventType, quantity } = options;
 
@@ -92,7 +92,8 @@ export async function checkQuota(
         allowed = projectedUsage <= limit || !!inGracePeriod;
       } else if (quotaLimit.enforcementMode === "SOFT") {
         const maxAllowed =
-          limit + (quotaLimit.overageAllowed ? Number(quotaLimit.overageAllowed) : 0);
+          limit +
+          (quotaLimit.overageAllowed ? Number(quotaLimit.overageAllowed) : 0);
         allowed = projectedUsage <= maxAllowed || !!inGracePeriod;
       }
 
@@ -106,7 +107,7 @@ export async function checkQuota(
         resetAt: quotaLimit.resetAt,
         gracePeriodEnd: quotaLimit.gracePeriodEnd ?? undefined,
       };
-    }
+    },
   );
 
   return {

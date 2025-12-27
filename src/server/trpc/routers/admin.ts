@@ -30,8 +30,10 @@ export const adminRouter = router({
     .input(
       z.object({
         limit: z.number().min(1).max(100).default(10),
-        metric: z.enum(["events_per_min", "cost_per_hour", "quota_usage_pct"]).optional(),
-      })
+        metric: z
+          .enum(["events_per_min", "cost_per_hour", "quota_usage_pct"])
+          .optional(),
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.organizationId) {
@@ -63,19 +65,27 @@ export const adminRouter = router({
         const tenantsWithMetrics = await Promise.all(
           tenants.map(async (tenant: TenantWithCount) => {
             const metrics: Record<string, number> = {};
-            
-            try {
-              const [eventsPerMin, costPerHour, quotaUsagePct] = await Promise.all([
-                redis.get(`hot:tenant:${tenant.id}:events_per_min`),
-                redis.get(`hot:tenant:${tenant.id}:cost_per_hour`),
-                redis.get(`hot:tenant:${tenant.id}:quota_usage_pct`),
-              ]);
 
-              metrics.eventsPerMin = eventsPerMin ? parseFloat(eventsPerMin) : 0;
+            try {
+              const [eventsPerMin, costPerHour, quotaUsagePct] =
+                await Promise.all([
+                  redis.get(`hot:tenant:${tenant.id}:events_per_min`),
+                  redis.get(`hot:tenant:${tenant.id}:cost_per_hour`),
+                  redis.get(`hot:tenant:${tenant.id}:quota_usage_pct`),
+                ]);
+
+              metrics.eventsPerMin = eventsPerMin
+                ? parseFloat(eventsPerMin)
+                : 0;
               metrics.costPerHour = costPerHour ? parseFloat(costPerHour) : 0;
-              metrics.quotaUsagePct = quotaUsagePct ? parseFloat(quotaUsagePct) : 0;
+              metrics.quotaUsagePct = quotaUsagePct
+                ? parseFloat(quotaUsagePct)
+                : 0;
             } catch (error) {
-              console.error(`Error fetching metrics for tenant ${tenant.id}:`, error);
+              console.error(
+                `Error fetching metrics for tenant ${tenant.id}:`,
+                error,
+              );
             }
 
             return {
@@ -86,7 +96,7 @@ export const adminRouter = router({
               metrics,
               eventCount: tenant._count.usageEvents,
             };
-          })
+          }),
         );
 
         return tenantsWithMetrics;
@@ -130,7 +140,7 @@ export const adminRouter = router({
       z.object({
         startDate: z.date().optional(),
         endDate: z.date().optional(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.organizationId) {
@@ -266,7 +276,7 @@ export const adminRouter = router({
         tenantIds: z.array(z.string()).optional(),
         periodStart: z.date(),
         periodEnd: z.date(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.organizationId) {
@@ -304,7 +314,11 @@ export const adminRouter = router({
           });
 
           if (snapshots.length === 0) {
-            return { tenantId: tenant.id, status: "skipped", reason: "No usage data" };
+            return {
+              tenantId: tenant.id,
+              status: "skipped",
+              reason: "No usage data",
+            };
           }
 
           // Generate invoice (simplified - in production, use the full logic from billing router)
@@ -327,13 +341,19 @@ export const adminRouter = router({
               subtotal: 0,
               tax: 0,
               total: 0,
-              dueDate: new Date(input.periodEnd.getTime() + 30 * 24 * 60 * 60 * 1000),
+              dueDate: new Date(
+                input.periodEnd.getTime() + 30 * 24 * 60 * 60 * 1000,
+              ),
               status: "DRAFT",
             },
           });
 
-          return { tenantId: tenant.id, status: "success", invoiceId: invoice.id };
-        })
+          return {
+            tenantId: tenant.id,
+            status: "success",
+            invoiceId: invoice.id,
+          };
+        }),
       );
 
       return {
@@ -341,9 +361,10 @@ export const adminRouter = router({
         succeeded: results.filter((r) => r.status === "fulfilled").length,
         failed: results.filter((r) => r.status === "rejected").length,
         results: results.map((r) =>
-          r.status === "fulfilled" ? r.value : { status: "error", error: String(r.reason) }
+          r.status === "fulfilled"
+            ? r.value
+            : { status: "error", error: String(r.reason) },
         ),
       };
     }),
 });
-

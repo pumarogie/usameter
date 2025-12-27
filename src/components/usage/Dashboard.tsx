@@ -15,11 +15,13 @@ export function UsageDashboard({ tenantId }: DashboardProps) {
   });
   const [endDate, setEndDate] = useState(new Date());
 
-  const { data: usage, isLoading: usageLoading } = trpc.usage.getUsage.useQuery({
-    start: startDate,
-    end: endDate,
-    granularity: "day",
-  });
+  const { data: usage, isLoading: usageLoading } = trpc.usage.getUsage.useQuery(
+    {
+      start: startDate,
+      end: endDate,
+      granularity: "day",
+    },
+  );
 
   const { data: usageByType, isLoading: usageByTypeLoading } =
     trpc.usage.getUsageByType.useQuery({
@@ -81,7 +83,10 @@ export function UsageDashboard({ tenantId }: DashboardProps) {
           <div className="space-y-4">
             {usageByType && usageByType.length > 0 ? (
               usageByType.map((item) => (
-                <div key={item.eventType} className="flex justify-between items-center">
+                <div
+                  key={item.eventType}
+                  className="flex justify-between items-center"
+                >
                   <div>
                     <div className="font-medium">{item.eventType}</div>
                     <div className="text-sm text-gray-500">
@@ -105,14 +110,15 @@ export function UsageDashboard({ tenantId }: DashboardProps) {
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <div className="text-sm text-gray-500">Events Today</div>
           <div className="text-2xl font-bold">
-            {usageByType?.reduce((sum: number, item) => sum + item.eventCount, 0) ?? 0}
+            {usageByType?.reduce(
+              (sum: number, item) => sum + item.eventCount,
+              0,
+            ) ?? 0}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <div className="text-sm text-gray-500">Event Types</div>
-          <div className="text-2xl font-bold">
-            {usageByType?.length ?? 0}
-          </div>
+          <div className="text-2xl font-bold">{usageByType?.length ?? 0}</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <div className="text-sm text-gray-500">Avg per Day</div>
@@ -124,9 +130,9 @@ export function UsageDashboard({ tenantId }: DashboardProps) {
                       1,
                       Math.ceil(
                         (endDate.getTime() - startDate.getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )
-                    )
+                          (1000 * 60 * 60 * 24),
+                      ),
+                    ),
                 )
               : 0}
           </div>
@@ -135,4 +141,3 @@ export function UsageDashboard({ tenantId }: DashboardProps) {
     </div>
   );
 }
-

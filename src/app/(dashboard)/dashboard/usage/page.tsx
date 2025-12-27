@@ -1,7 +1,13 @@
 "use client";
 
 import { Activity, TrendingUp, Clock, Zap } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -59,7 +65,9 @@ export default function UsagePage() {
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -149,9 +157,7 @@ export default function UsagePage() {
           <Card>
             <CardHeader>
               <CardTitle>Usage by Customer</CardTitle>
-              <CardDescription>
-                Top customers by event volume
-              </CardDescription>
+              <CardDescription>Top customers by event volume</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center rounded-md border border-dashed">

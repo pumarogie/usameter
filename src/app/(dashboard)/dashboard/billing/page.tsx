@@ -3,8 +3,21 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrganization } from "@clerk/nextjs";
-import { CreditCard, TrendingUp, Calendar, ArrowRight, CheckCircle, Loader2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CreditCard,
+  TrendingUp,
+  Calendar,
+  ArrowRight,
+  CheckCircle,
+  Loader2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -86,7 +99,9 @@ function BillingContent() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usage This Period</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Usage This Period
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -100,14 +115,17 @@ function BillingContent() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {usage.percentUsed.toFixed(1)}% of {usage.included.toLocaleString()} included
+              {usage.percentUsed.toFixed(1)}% of{" "}
+              {usage.included.toLocaleString()} included
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Next Billing Date</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Next Billing Date
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -128,7 +146,9 @@ function BillingContent() {
         <Card>
           <CardHeader>
             <CardTitle>Subscription Details</CardTitle>
-            <CardDescription>Your current plan and billing cycle</CardDescription>
+            <CardDescription>
+              Your current plan and billing cycle
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
@@ -155,7 +175,9 @@ function BillingContent() {
             <Separator />
             <div className="flex justify-between">
               <span className="text-muted-foreground">Included Events</span>
-              <span className="font-medium">{usage.included.toLocaleString()}</span>
+              <span className="font-medium">
+                {usage.included.toLocaleString()}
+              </span>
             </div>
             <div className="pt-4">
               <Button className="w-full" variant="outline">

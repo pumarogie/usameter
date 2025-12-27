@@ -10,7 +10,8 @@ const t = initTRPC.context<Context>().create({
       data: {
         ...shape.data,
         code: error.code,
-        httpStatus: error.cause instanceof Error ? (error.cause as any).status : 500,
+        httpStatus:
+          error.cause instanceof Error ? (error.cause as any).status : 500,
       },
     };
   },
@@ -58,4 +59,3 @@ const enforceOrgAccess = t.middleware(async ({ ctx, next }) => {
 });
 
 export const orgProcedure = tenantProcedure.use(enforceOrgAccess);
-

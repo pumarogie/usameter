@@ -35,10 +35,10 @@ export function InvoiceDetail({ tenantId, invoiceId }: InvoiceDetailProps) {
             invoice.status === "PAID"
               ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
               : invoice.status === "PENDING"
-              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-              : invoice.status === "OVERDUE"
-              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                : invoice.status === "OVERDUE"
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                  : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
           }`}
         >
           {invoice.status}
@@ -72,11 +72,15 @@ export function InvoiceDetail({ tenantId, invoiceId }: InvoiceDetailProps) {
         <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-600">Subtotal:</span>
-            <span className="font-medium">${Number(invoice.subtotal).toFixed(2)}</span>
+            <span className="font-medium">
+              ${Number(invoice.subtotal).toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Tax:</span>
-            <span className="font-medium">${Number(invoice.tax).toFixed(2)}</span>
+            <span className="font-medium">
+              ${Number(invoice.tax).toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between text-xl font-bold border-t pt-2">
             <span>Total:</span>
@@ -106,4 +110,3 @@ export function InvoiceDetail({ tenantId, invoiceId }: InvoiceDetailProps) {
     </div>
   );
 }
-

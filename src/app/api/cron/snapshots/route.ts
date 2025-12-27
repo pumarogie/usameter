@@ -30,15 +30,12 @@ export async function POST(req: NextRequest) {
       console.error("CRON_SECRET not configured");
       return NextResponse.json(
         { error: "Cron endpoint not configured" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Parse query params
@@ -101,75 +98,90 @@ export async function POST(req: NextRequest) {
       const batch = tenants.slice(i, i + BATCH_SIZE);
 
       await Promise.all(
-        batch.map(async (tenant: { id: string; organizationId: string; externalId: string }) => {
-          try {
-            // Aggregate usage events for this tenant on the snapshot date
-            const usageByType = await prisma.usageEvent.groupBy({
-              by: ["eventType"],
-              where: {
-                tenantId: tenant.id,
-                timestamp: {
-                  gte: startOfDay,
-                  lte: endOfDay,
+        batch.map(
+          async (tenant: {
+            id: string;
+            organizationId: string;
+            externalId: string;
+          }) => {
+            try {
+              // Aggregate usage events for this tenant on the snapshot date
+              const usageByType = await prisma.usageEvent.groupBy({
+                by: ["eventType"],
+                where: {
+                  tenantId: tenant.id,
+                  timestamp: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                  },
                 },
-              },
-              _sum: {
-                quantity: true,
-              },
-            });
+                _sum: {
+                  quantity: true,
+                },
+              });
 
-            if (usageByType.length === 0) {
+              if (usageByType.length === 0) {
+                tenantsProcessed++;
+                return; // No usage for this tenant on this day
+              }
+
+              // Upsert snapshots for each event type
+              const snapshots = await Promise.all(
+                usageByType.map(
+                  async (item: {
+                    eventType: string;
+                    _sum: { quantity: bigint | null };
+                  }) => {
+                    const totalQuantity = Number(item._sum.quantity || 0);
+
+                    return prisma.usageSnapshot.upsert({
+                      where: {
+                        tenantId_snapshotDate_eventType: {
+                          tenantId: tenant.id,
+                          snapshotDate: snapshotDate,
+                          eventType: item.eventType,
+                        },
+                      },
+                      update: {
+                        totalQuantity,
+                      },
+                      create: {
+                        tenantId: tenant.id,
+                        organizationId: tenant.organizationId,
+                        snapshotDate: snapshotDate,
+                        eventType: item.eventType,
+                        totalQuantity,
+                      },
+                    });
+                  },
+                ),
+              );
+
+              results.push({
+                tenantId: tenant.id,
+                externalId: tenant.externalId,
+                snapshotsCreated: snapshots.length,
+                eventTypes: usageByType.map(
+                  (u: { eventType: string }) => u.eventType,
+                ),
+              });
+
+              totalSnapshots += snapshots.length;
               tenantsProcessed++;
-              return; // No usage for this tenant on this day
+            } catch (error) {
+              console.error(`Error processing tenant ${tenant.id}:`, error);
+              errors.push({
+                tenantId: tenant.id,
+                error: error instanceof Error ? error.message : "Unknown error",
+              });
             }
-
-            // Upsert snapshots for each event type
-            const snapshots = await Promise.all(
-              usageByType.map(async (item: { eventType: string; _sum: { quantity: bigint | null } }) => {
-                const totalQuantity = Number(item._sum.quantity || 0);
-
-                return prisma.usageSnapshot.upsert({
-                  where: {
-                    tenantId_snapshotDate_eventType: {
-                      tenantId: tenant.id,
-                      snapshotDate: snapshotDate,
-                      eventType: item.eventType,
-                    },
-                  },
-                  update: {
-                    totalQuantity,
-                  },
-                  create: {
-                    tenantId: tenant.id,
-                    organizationId: tenant.organizationId,
-                    snapshotDate: snapshotDate,
-                    eventType: item.eventType,
-                    totalQuantity,
-                  },
-                });
-              })
-            );
-
-            results.push({
-              tenantId: tenant.id,
-              externalId: tenant.externalId,
-              snapshotsCreated: snapshots.length,
-              eventTypes: usageByType.map((u: { eventType: string }) => u.eventType),
-            });
-
-            totalSnapshots += snapshots.length;
-            tenantsProcessed++;
-          } catch (error) {
-            console.error(`Error processing tenant ${tenant.id}:`, error);
-            errors.push({
-              tenantId: tenant.id,
-              error: error instanceof Error ? error.message : "Unknown error",
-            });
-          }
-        })
+          },
+        ),
       );
 
-      console.log(`Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(tenants.length / BATCH_SIZE)}`);
+      console.log(
+        `Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(tenants.length / BATCH_SIZE)}`,
+      );
     }
 
     // Create audit log for the cron job run
@@ -202,7 +214,7 @@ export async function POST(req: NextRequest) {
     console.error("Error in snapshot cron job:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

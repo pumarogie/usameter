@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { useUser, useOrganizationList } from "@clerk/nextjs";
 import { Activity, Building2, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 

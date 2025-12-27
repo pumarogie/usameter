@@ -26,7 +26,7 @@ export const snapshotRouter = router({
       z.object({
         snapshotDate: z.date(),
         eventType: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -98,7 +98,7 @@ export const snapshotRouter = router({
               totalQuantity,
             },
           });
-        })
+        }),
       );
 
       return {
@@ -120,7 +120,7 @@ export const snapshotRouter = router({
         eventType: z.string().optional(),
         limit: z.number().min(1).max(1000).default(100),
         cursor: z.string().optional(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -147,9 +147,11 @@ export const snapshotRouter = router({
       });
 
       let nextCursor: string | undefined = undefined;
-      const snapshots = allSnapshots.length > input.limit
-        ? (nextCursor = allSnapshots[input.limit]?.id, allSnapshots.slice(0, input.limit))
-        : allSnapshots;
+      const snapshots =
+        allSnapshots.length > input.limit
+          ? ((nextCursor = allSnapshots[input.limit]?.id),
+            allSnapshots.slice(0, input.limit))
+          : allSnapshots;
 
       return {
         snapshots: snapshots.map((s: UsageSnapshot) => ({
@@ -170,7 +172,7 @@ export const snapshotRouter = router({
         endDate: z.date(),
         eventType: z.string().optional(),
         granularity: z.enum(["day", "month"]).default("day"),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -229,10 +231,12 @@ export const snapshotRouter = router({
           eventType,
           quantity,
         })),
-        totalQuantity: Object.values(eventTypes).reduce((sum, qty) => sum + qty, 0),
+        totalQuantity: Object.values(eventTypes).reduce(
+          (sum, qty) => sum + qty,
+          0,
+        ),
       }));
 
       return result.sort((a, b) => a.period.localeCompare(b.period));
     }),
 });
-

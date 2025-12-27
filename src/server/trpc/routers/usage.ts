@@ -10,7 +10,7 @@ type UsageGroupByItem = {
   _count: { id: number };
 };
 import {
-  incrementRollingCounter, 
+  incrementRollingCounter,
   checkAndIncrementQuota,
   getCachedAggregation,
   setCachedAggregation,
@@ -26,7 +26,7 @@ export const usageRouter = router({
         metadata: z.record(z.any()).optional(),
         timestamp: z.date().optional(),
         skipQuotaCheck: z.boolean().default(false),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -69,7 +69,7 @@ export const usageRouter = router({
                 tenantId,
                 input.eventType,
                 input.quantity,
-                periodId
+                periodId,
               );
             }
             return { allowed: true, current: 0, limit: Infinity };
@@ -108,7 +108,7 @@ export const usageRouter = router({
               };
             }
             return { allowed: true, current: 0, limit: Infinity };
-          }
+          },
         );
 
         if (!quotaCheck.allowed) {
@@ -127,12 +127,24 @@ export const usageRouter = router({
       await withRedisFallback(
         async () => {
           await Promise.all([
-            incrementRollingCounter(tenantId, input.eventType, input.quantity, "1h", hourBucket),
-            incrementRollingCounter(tenantId, input.eventType, input.quantity, "24h", dayBucket),
+            incrementRollingCounter(
+              tenantId,
+              input.eventType,
+              input.quantity,
+              "1h",
+              hourBucket,
+            ),
+            incrementRollingCounter(
+              tenantId,
+              input.eventType,
+              input.quantity,
+              "24h",
+              dayBucket,
+            ),
           ]);
           return null;
         },
-        async () => null
+        async () => null,
       );
 
       // Create usage event in database (async for high throughput)
@@ -160,7 +172,7 @@ export const usageRouter = router({
         start: z.date(),
         end: z.date(),
         granularity: z.enum(["hour", "day", "month"]).default("day"),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -188,12 +200,12 @@ export const usageRouter = router({
               input.eventType,
               input.granularity,
               cacheKey.start,
-              cacheKey.end
+              cacheKey.end,
             );
           }
           return null;
         },
-        async () => null
+        async () => null,
       );
 
       if (cached !== null) {
@@ -232,11 +244,11 @@ export const usageRouter = router({
               input.granularity,
               cacheKey.start,
               cacheKey.end,
-              total
+              total,
             );
             return null;
           },
-          async () => null
+          async () => null,
         );
       }
 
@@ -248,7 +260,7 @@ export const usageRouter = router({
       z.object({
         start: z.date(),
         end: z.date(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -287,7 +299,7 @@ export const usageRouter = router({
       z.object({
         eventType: z.string(),
         quantity: z.number().positive().default(1),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -345,7 +357,7 @@ export const usageRouter = router({
             current,
             limit,
           };
-        }
+        },
       );
 
       return {
@@ -357,4 +369,3 @@ export const usageRouter = router({
       };
     }),
 });
-

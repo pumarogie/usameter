@@ -2,8 +2,23 @@
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Key, Plus, Copy, Check, Trash2, RotateCw, Eye, EyeOff } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Key,
+  Plus,
+  Copy,
+  Check,
+  Trash2,
+  RotateCw,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -115,7 +130,8 @@ export default function ApiKeysPage() {
             <DialogHeader>
               <DialogTitle>Create API Key</DialogTitle>
               <DialogDescription>
-                Create a new API key to access the Usameter API. The key will only be shown once.
+                Create a new API key to access the Usameter API. The key will
+                only be shown once.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -130,7 +146,10 @@ export default function ApiKeysPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateDialog(false)}
+              >
                 Cancel
               </Button>
               <Button onClick={handleCreateKey} disabled={!newKeyName.trim()}>
@@ -147,7 +166,8 @@ export default function ApiKeysPage() {
           <DialogHeader>
             <DialogTitle>API Key Created</DialogTitle>
             <DialogDescription>
-              Make sure to copy your API key now. You won&apos;t be able to see it again!
+              Make sure to copy your API key now. You won&apos;t be able to see
+              it again!
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -196,7 +216,10 @@ export default function ApiKeysPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Create an API key to start integrating with Usameter.
               </p>
-              <Button className="mt-4" onClick={() => setShowCreateDialog(true)}>
+              <Button
+                className="mt-4"
+                onClick={() => setShowCreateDialog(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Create API Key
               </Button>
@@ -225,7 +248,11 @@ export default function ApiKeysPage() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {key.permissions.map((perm) => (
-                          <Badge key={perm} variant="secondary" className="text-xs">
+                          <Badge
+                            key={perm}
+                            variant="secondary"
+                            className="text-xs"
+                          >
                             {perm}
                           </Badge>
                         ))}
@@ -263,9 +290,7 @@ export default function ApiKeysPage() {
       <Card>
         <CardHeader>
           <CardTitle>API Documentation</CardTitle>
-          <CardDescription>
-            Learn how to use the Usameter API
-          </CardDescription>
+          <CardDescription>Learn how to use the Usameter API</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -283,7 +308,7 @@ export default function ApiKeysPage() {
             <h4 className="font-medium mb-2">Example: Track an Event</h4>
             <div className="rounded-md bg-muted p-4 overflow-x-auto">
               <pre className="text-sm">
-{`curl -X POST https://api.usameter.io/v1/events \\
+                {`curl -X POST https://api.usameter.io/v1/events \\
   -H "Authorization: Bearer usa_your_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{

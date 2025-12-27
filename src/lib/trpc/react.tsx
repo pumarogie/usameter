@@ -28,14 +28,17 @@ export function TRPCReactProvider(props: {
   organizationId?: string;
   userId?: string;
 }) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 5 * 1000, // 5 seconds
-        refetchOnWindowFocus: false,
-      },
-    },
-  }));
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 1000, // 5 seconds
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
 
   const [trpcClient] = useState(() =>
     trpc.createClient({
@@ -58,7 +61,7 @@ export function TRPCReactProvider(props: {
           },
         }),
       ],
-    })
+    }),
   );
 
   return (
@@ -69,4 +72,3 @@ export function TRPCReactProvider(props: {
     </trpc.Provider>
   );
 }
-

@@ -1,7 +1,13 @@
 "use client";
 
 import { Download, ExternalLink, FileText } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -49,7 +55,10 @@ const invoices = [
   },
 ];
 
-const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const statusColors: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   paid: "default",
   pending: "secondary",
   failed: "destructive",
@@ -69,9 +78,7 @@ export default function InvoicesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Billing History</CardTitle>
-          <CardDescription>
-            All invoices from your subscription
-          </CardDescription>
+          <CardDescription>All invoices from your subscription</CardDescription>
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
@@ -79,7 +86,8 @@ export default function InvoicesPage() {
               <FileText className="h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold">No invoices yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Your invoices will appear here once you have an active subscription.
+                Your invoices will appear here once you have an active
+                subscription.
               </p>
             </div>
           ) : (
@@ -108,14 +116,20 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell>${invoice.amount.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge variant={statusColors[invoice.status] || "default"}>
+                      <Badge
+                        variant={statusColors[invoice.status] || "default"}
+                      >
                         {invoice.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" asChild>
-                          <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={invoice.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>

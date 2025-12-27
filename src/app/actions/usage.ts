@@ -10,7 +10,7 @@ export async function recordUsageEvent(
     quantity?: number;
     metadata?: Record<string, any>;
     timestamp?: Date;
-  }
+  },
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -40,7 +40,7 @@ export async function getTenantUsage(
     start: Date;
     end: Date;
     granularity?: "hour" | "day" | "month";
-  }
+  },
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -67,7 +67,7 @@ export async function getTenantUsageByType(
   options: {
     start: Date;
     end: Date;
-  }
+  },
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -90,7 +90,7 @@ export async function getTenantUsageByType(
 export async function checkTenantQuota(
   tenantId: string,
   eventType: string,
-  quantity: number = 1
+  quantity: number = 1,
 ) {
   const trpc = createServerTRPCClient({ tenantId });
 
@@ -109,4 +109,3 @@ export async function checkTenantQuota(
     };
   }
 }
-

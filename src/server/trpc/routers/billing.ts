@@ -63,7 +63,7 @@ export const billingRouter = router({
         tenantId: z.string(),
         periodStart: z.date(),
         periodEnd: z.date(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId || ctx.tenantId !== input.tenantId) {
@@ -121,7 +121,7 @@ export const billingRouter = router({
             string,
             { totalQuantity: number; snapshots: UsageSnapshot[] }
           >,
-          snapshot: UsageSnapshot
+          snapshot: UsageSnapshot,
         ) => {
           if (!acc[snapshot.eventType]) {
             acc[snapshot.eventType] = {
@@ -130,12 +130,15 @@ export const billingRouter = router({
             };
           }
           acc[snapshot.eventType]!.totalQuantity += Number(
-            snapshot.totalQuantity
+            snapshot.totalQuantity,
           );
           acc[snapshot.eventType]!.snapshots.push(snapshot);
           return acc;
         },
-        {} as Record<string, { totalQuantity: number; snapshots: UsageSnapshot[] }>
+        {} as Record<
+          string,
+          { totalQuantity: number; snapshots: UsageSnapshot[] }
+        >,
       );
 
       // Calculate line items with tiered pricing
@@ -172,7 +175,9 @@ export const billingRouter = router({
 
         for (const tier of relevantTiers) {
           const tierMin = Number(tier.minQuantity);
-          const tierMax = tier.maxQuantity ? Number(tier.maxQuantity) : Infinity;
+          const tierMax = tier.maxQuantity
+            ? Number(tier.maxQuantity)
+            : Infinity;
           const tierPrice = Number(tier.unitPrice);
 
           // Skip if we haven't reached this tier yet
@@ -181,18 +186,22 @@ export const billingRouter = router({
           // Calculate quantity that falls within this tier
           // Tier range: [tierMin, tierMax)
           const tierCapacity = tierMax - tierMin;
-          const quantityToProcess = currentUsage.totalQuantity - processedQuantity;
+          const quantityToProcess =
+            currentUsage.totalQuantity - processedQuantity;
 
           // If we're starting below tierMin, skip to the appropriate tier
           if (processedQuantity < tierMin) {
             // This tier starts at tierMin, we need to process from there
             const quantityInTier = Math.min(
               currentUsage.totalQuantity - tierMin,
-              tierCapacity
+              tierCapacity,
             );
 
             if (quantityInTier > 0 && currentUsage.totalQuantity > tierMin) {
-              const actualQuantity = Math.min(quantityInTier, currentUsage.totalQuantity - tierMin);
+              const actualQuantity = Math.min(
+                quantityInTier,
+                currentUsage.totalQuantity - tierMin,
+              );
               if (actualQuantity > 0) {
                 totalPrice += actualQuantity * tierPrice;
                 tierBreakdown.push({
@@ -238,13 +247,19 @@ export const billingRouter = router({
         lineItems.push({
           eventType,
           quantity: currentUsage.totalQuantity,
-          unitPrice: currentUsage.totalQuantity > 0 ? totalPrice / currentUsage.totalQuantity : 0,
+          unitPrice:
+            currentUsage.totalQuantity > 0
+              ? totalPrice / currentUsage.totalQuantity
+              : 0,
           totalPrice,
           tierBreakdown,
         });
       }
 
-      const subtotal = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const subtotal = lineItems.reduce(
+        (sum, item) => sum + item.totalPrice,
+        0,
+      );
       const tax = subtotal * 0.1; // 10% tax (configurable)
       const total = subtotal + tax;
 
@@ -265,54 +280,58 @@ export const billingRouter = router({
       const tenantId = ctx.tenantId;
 
       // Create invoice with audit trail linking events
-      const invoice = await prisma.$transaction(async (tx: TransactionClient) => {
-        // Create the invoice
-        const newInvoice = await tx.invoice.create({
-          data: {
-            tenantId,
-            organizationId: tenant.organizationId,
-            invoiceNumber,
-            periodStart: input.periodStart,
-            periodEnd: input.periodEnd,
-            subtotal,
-            tax,
-            total,
-            dueDate: new Date(input.periodEnd.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days after period end
-            status: "DRAFT",
-            lineItems: {
-              create: lineItems.map((item) => ({
-                eventType: item.eventType,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                totalPrice: item.totalPrice,
-                metadata: { tierBreakdown: item.tierBreakdown },
-              })),
+      const invoice = await prisma.$transaction(
+        async (tx: TransactionClient) => {
+          // Create the invoice
+          const newInvoice = await tx.invoice.create({
+            data: {
+              tenantId,
+              organizationId: tenant.organizationId,
+              invoiceNumber,
+              periodStart: input.periodStart,
+              periodEnd: input.periodEnd,
+              subtotal,
+              tax,
+              total,
+              dueDate: new Date(
+                input.periodEnd.getTime() + 30 * 24 * 60 * 60 * 1000,
+              ), // 30 days after period end
+              status: "DRAFT",
+              lineItems: {
+                create: lineItems.map((item) => ({
+                  eventType: item.eventType,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  totalPrice: item.totalPrice,
+                  metadata: { tierBreakdown: item.tierBreakdown },
+                })),
+              },
             },
-          },
-          include: {
-            lineItems: true,
-          },
-        });
-
-        // Link all usage events in the billing period to this invoice (audit trail)
-        const billedAt = new Date();
-        await tx.usageEvent.updateMany({
-          where: {
-            tenantId: ctx.tenantId,
-            timestamp: {
-              gte: input.periodStart,
-              lte: input.periodEnd,
+            include: {
+              lineItems: true,
             },
-            invoiceId: null, // Only link events not already billed
-          },
-          data: {
-            invoiceId: newInvoice.id,
-            billedAt,
-          },
-        });
+          });
 
-        return newInvoice;
-      });
+          // Link all usage events in the billing period to this invoice (audit trail)
+          const billedAt = new Date();
+          await tx.usageEvent.updateMany({
+            where: {
+              tenantId: ctx.tenantId,
+              timestamp: {
+                gte: input.periodStart,
+                lte: input.periodEnd,
+              },
+              invoiceId: null, // Only link events not already billed
+            },
+            data: {
+              invoiceId: newInvoice.id,
+              billedAt,
+            },
+          });
+
+          return newInvoice;
+        },
+      );
 
       return invoice;
     }),
@@ -321,7 +340,7 @@ export const billingRouter = router({
     .input(
       z.object({
         invoiceId: z.string(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -355,12 +374,14 @@ export const billingRouter = router({
   listInvoices: tenantProcedure
     .input(
       z.object({
-        status: z.enum(["DRAFT", "PENDING", "PAID", "OVERDUE", "CANCELLED"]).optional(),
+        status: z
+          .enum(["DRAFT", "PENDING", "PAID", "OVERDUE", "CANCELLED"])
+          .optional(),
         startDate: z.date().optional(),
         endDate: z.date().optional(),
         limit: z.number().min(1).max(100).default(20),
         cursor: z.string().optional(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -417,7 +438,7 @@ export const billingRouter = router({
       z.object({
         startDate: z.date(),
         endDate: z.date(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -455,12 +476,17 @@ export const billingRouter = router({
         }),
       ]);
 
-      const totalBilled = invoices.reduce((sum: number, inv: Invoice) => sum + Number(inv.total), 0);
+      const totalBilled = invoices.reduce(
+        (sum: number, inv: Invoice) => sum + Number(inv.total),
+        0,
+      );
       const totalPaid = invoices
         .filter((inv: Invoice) => inv.status === "PAID")
         .reduce((sum: number, inv: Invoice) => sum + Number(inv.total), 0);
       const totalPending = invoices
-        .filter((inv: Invoice) => inv.status === "PENDING" || inv.status === "DRAFT")
+        .filter(
+          (inv: Invoice) => inv.status === "PENDING" || inv.status === "DRAFT",
+        )
         .reduce((sum: number, inv: Invoice) => sum + Number(inv.total), 0);
 
       return {
@@ -489,4 +515,3 @@ export const billingRouter = router({
       };
     }),
 });
-

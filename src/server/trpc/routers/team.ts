@@ -49,7 +49,7 @@ export const teamRouter = router({
         email: z.string().email(),
         role: z.enum(["admin", "member", "viewer"]),
         invitedBy: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       // Check if invitation already exists
@@ -101,7 +101,7 @@ export const teamRouter = router({
       z.object({
         id: z.string(),
         organizationId: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const invitation = await prisma.teamInvitation.findFirst({
@@ -131,7 +131,7 @@ export const teamRouter = router({
       z.object({
         token: z.string(),
         userId: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const invitation = await prisma.teamInvitation.findUnique({
@@ -181,7 +181,7 @@ export const teamRouter = router({
       z.object({
         id: z.string(),
         organizationId: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const invitation = await prisma.teamInvitation.findFirst({

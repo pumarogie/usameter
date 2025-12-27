@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         { error: "Missing or invalid Authorization header" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -19,14 +19,14 @@ export async function GET(req: NextRequest) {
     if (!keyValidation.valid) {
       return NextResponse.json(
         { error: keyValidation.reason },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (!hasPermission(keyValidation, "usage:read")) {
       return NextResponse.json(
         { error: "Insufficient permissions. Required: usage:read" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       });
 
       return NextResponse.json({
-        usage: usage.map((u: typeof usage[number]) => ({
+        usage: usage.map((u: (typeof usage)[number]) => ({
           event_type: u.eventType,
           total_quantity: Number(u._sum.quantity || 0),
           event_count: u._count,
@@ -103,15 +103,20 @@ export async function GET(req: NextRequest) {
       });
 
       // Get tenant external IDs
-      const tenantIds = usage.map((u: typeof usage[number]) => u.tenantId);
+      const tenantIds = usage.map((u: (typeof usage)[number]) => u.tenantId);
       const tenants = await prisma.tenant.findMany({
         where: { id: { in: tenantIds } },
         select: { id: true, externalId: true },
       });
-      const tenantMap = new Map(tenants.map((t: { id: string; externalId: string }) => [t.id, t.externalId]));
+      const tenantMap = new Map(
+        tenants.map((t: { id: string; externalId: string }) => [
+          t.id,
+          t.externalId,
+        ]),
+      );
 
       return NextResponse.json({
-        usage: usage.map((u: typeof usage[number]) => ({
+        usage: usage.map((u: (typeof usage)[number]) => ({
           tenant_id: tenantMap.get(u.tenantId) || u.tenantId,
           total_quantity: Number(u._sum.quantity || 0),
           event_count: u._count,
@@ -132,19 +137,30 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      type DailyUsage = Record<string, { total_quantity: number; event_count: number }>;
-      const dailyUsage = events.reduce((acc: DailyUsage, event: typeof events[number]) => {
-        const day = event.timestamp.toISOString().split("T")[0]!;
-        if (!acc[day]) {
-          acc[day] = { total_quantity: 0, event_count: 0 };
-        }
-        acc[day].total_quantity += Number(event.quantity);
-        acc[day].event_count += 1;
-        return acc;
-      }, {} as DailyUsage);
+      type DailyUsage = Record<
+        string,
+        { total_quantity: number; event_count: number }
+      >;
+      const dailyUsage = events.reduce(
+        (acc: DailyUsage, event: (typeof events)[number]) => {
+          const day = event.timestamp.toISOString().split("T")[0]!;
+          if (!acc[day]) {
+            acc[day] = { total_quantity: 0, event_count: 0 };
+          }
+          acc[day].total_quantity += Number(event.quantity);
+          acc[day].event_count += 1;
+          return acc;
+        },
+        {} as DailyUsage,
+      );
 
       return NextResponse.json({
-        usage: (Object.entries(dailyUsage) as [string, { total_quantity: number; event_count: number }][])
+        usage: (
+          Object.entries(dailyUsage) as [
+            string,
+            { total_quantity: number; event_count: number },
+          ][]
+        )
           .map(([date, data]) => ({
             date,
             ...data,
@@ -159,13 +175,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       { error: "Invalid group_by parameter. Use: event_type, tenant, or day" },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (error) {
     console.error("Error fetching usage:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

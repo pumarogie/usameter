@@ -14,7 +14,9 @@ export interface InvalidApiKey {
 
 export type ApiKeyValidationResult = ValidatedApiKey | InvalidApiKey;
 
-export async function validateApiKey(key: string): Promise<ApiKeyValidationResult> {
+export async function validateApiKey(
+  key: string,
+): Promise<ApiKeyValidationResult> {
   if (!key || !key.startsWith("usa_")) {
     return { valid: false, reason: "Invalid key format" };
   }
@@ -38,12 +40,14 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
   }
 
   // Update last used timestamp (fire and forget)
-  prisma.apiKey.update({
-    where: { id: apiKey.id },
-    data: { lastUsedAt: new Date() },
-  }).catch(() => {
-    // Ignore errors updating last used
-  });
+  prisma.apiKey
+    .update({
+      where: { id: apiKey.id },
+      data: { lastUsedAt: new Date() },
+    })
+    .catch(() => {
+      // Ignore errors updating last used
+    });
 
   return {
     valid: true,
@@ -54,7 +58,7 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 
 export function hasPermission(
   result: ApiKeyValidationResult,
-  permission: string
+  permission: string,
 ): boolean {
   if (!result.valid) return false;
   return result.permissions.includes(permission);

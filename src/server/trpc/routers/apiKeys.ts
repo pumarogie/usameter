@@ -54,10 +54,12 @@ export const apiKeysRouter = router({
       z.object({
         organizationId: z.string(),
         name: z.string().min(1).max(100),
-        permissions: z.array(z.string()).default(["events:write", "usage:read"]),
+        permissions: z
+          .array(z.string())
+          .default(["events:write", "usage:read"]),
         expiresAt: z.date().optional(),
         createdBy: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const { key, hash, prefix } = generateApiKey();
@@ -91,7 +93,7 @@ export const apiKeysRouter = router({
       z.object({
         id: z.string(),
         organizationId: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const apiKey = await prisma.apiKey.findFirst({
@@ -123,7 +125,7 @@ export const apiKeysRouter = router({
         id: z.string(),
         organizationId: z.string(),
         createdBy: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const existingKey = await prisma.apiKey.findFirst({
