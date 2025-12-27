@@ -52,15 +52,15 @@ Usameter solves the critical challenge of usage-based billing: accurately measur
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Framework | Next.js 16 (App Router) |
-| Database | PostgreSQL with Prisma ORM |
-| Cache | Redis (ioredis) |
-| Authentication | Clerk |
-| Payments | Stripe |
-| API Layer | tRPC + REST |
-| Validation | Zod |
+| Component      | Technology                 |
+| -------------- | -------------------------- |
+| Framework      | Next.js 16 (App Router)    |
+| Database       | PostgreSQL with Prisma ORM |
+| Cache          | Redis (ioredis)            |
+| Authentication | Clerk                      |
+| Payments       | Stripe                     |
+| API Layer      | tRPC + REST                |
+| Validation     | Zod                        |
 
 ## Getting Started
 
@@ -128,6 +128,7 @@ Authorization: Bearer usa_<api_key>
 Record usage events.
 
 **Single Event:**
+
 ```json
 {
   "event_type": "api_request",
@@ -142,6 +143,7 @@ Record usage events.
 ```
 
 **Batch (up to 1,000 events):**
+
 ```json
 {
   "events": [
@@ -156,6 +158,7 @@ Record usage events.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -169,6 +172,7 @@ Record usage events.
 Query recorded events.
 
 **Parameters:**
+
 - `tenant_id` — Filter by tenant
 - `event_type` — Filter by event type
 - `start_date` — ISO 8601 datetime
@@ -178,6 +182,7 @@ Query recorded events.
 ### Error Responses
 
 **Quota Exceeded (403):**
+
 ```json
 {
   "error": "Quota exceeded",
@@ -191,6 +196,7 @@ Query recorded events.
 ```
 
 **Rate Limited (429):**
+
 ```json
 {
   "error": "Rate limit exceeded",
@@ -266,6 +272,7 @@ pnpm start
 ```
 
 Configure your scheduler to call `/api/cron/snapshots` daily:
+
 ```
 Authorization: Bearer <CRON_SECRET>
 ```
@@ -274,15 +281,16 @@ Authorization: Bearer <CRON_SECRET>
 
 ### Subscription Plans
 
-| Plan | Monthly | Included Events | Overage |
-|------|---------|-----------------|---------|
-| Starter | $29 | 100,000 | $0.50/1K |
-| Growth | $99 | 500,000 | $0.30/1K |
-| Enterprise | $499 | 5,000,000 | $0.10/1K |
+| Plan       | Monthly | Included Events | Overage  |
+| ---------- | ------- | --------------- | -------- |
+| Starter    | $29     | 100,000         | $0.50/1K |
+| Growth     | $99     | 500,000         | $0.30/1K |
+| Enterprise | $499    | 5,000,000       | $0.10/1K |
 
 ### Tiered Pricing
 
 Configure per event type:
+
 ```
 Tier 1: 0-1,000 units @ $0.10/unit
 Tier 2: 1,001-10,000 units @ $0.08/unit
@@ -311,6 +319,7 @@ Most usage tracking systems are built for analytics. Usameter is built for billi
 ### 3. Flexible Enforcement Model
 
 Unlike binary on/off quotas:
+
 - **Soft limits** warn customers before hard cutoff
 - **Grace periods** give time to upgrade plans
 - **Enforcement modes** (HARD/SOFT/DISABLED) per tenant/event type
@@ -318,6 +327,7 @@ Unlike binary on/off quotas:
 ### 4. Complete Billing Pipeline
 
 End-to-end from event to invoice:
+
 - Event ingestion with deduplication
 - Automated daily snapshots
 - Tiered pricing calculation

@@ -1,13 +1,27 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Decimal } from "@prisma/client/runtime/library";
-import { router, tenantProcedure } from "../trpc";
+import { router, tenantProcedure, publicProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 
 type UsageGroupByItem = {
   eventType: string;
   _sum: { quantity: Decimal | null };
   _count: { id: number };
+};
+
+type UsageEventWithTenant = {
+  id: string;
+  eventType: string;
+  quantity: Decimal;
+  metadata: unknown;
+  timestamp: Date;
+  billedAt: Date | null;
+  tenant: {
+    id: string;
+    externalId: string;
+    name: string | null;
+  };
 };
 import {
   incrementRollingCounter,
@@ -366,6 +380,77 @@ export const usageRouter = router({
         current: quotaStatus.current,
         limit: quotaStatus.limit,
         remaining: Math.max(0, quotaStatus.limit - quotaStatus.current),
+      };
+    }),
+
+  // List events by organization (for dashboard)
+  listEventsByOrganization: publicProcedure
+    .input(
+      z.object({
+        organizationId: z.string(),
+        eventType: z.string().optional(),
+        start: z.date().optional(),
+        end: z.date().optional(),
+        limit: z.number().min(1).max(100).default(50),
+        cursor: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const where: {
+        organizationId: string;
+        eventType?: string;
+        timestamp?: { gte?: Date; lte?: Date };
+      } = {
+        organizationId: input.organizationId,
+      };
+
+      if (input.eventType) {
+        where.eventType = input.eventType;
+      }
+
+      if (input.start || input.end) {
+        where.timestamp = {};
+        if (input.start) {
+          where.timestamp.gte = input.start;
+        }
+        if (input.end) {
+          where.timestamp.lte = input.end;
+        }
+      }
+
+      const events = await prisma.usageEvent.findMany({
+        where,
+        orderBy: { timestamp: "desc" },
+        take: input.limit + 1,
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              externalId: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      let nextCursor: string | undefined = undefined;
+      if (events.length > input.limit) {
+        const nextItem = events.pop();
+        nextCursor = nextItem!.id;
+      }
+
+      return {
+        events: events.map((event: UsageEventWithTenant) => ({
+          id: event.id,
+          eventType: event.eventType,
+          quantity: Number(event.quantity),
+          metadata: event.metadata,
+          timestamp: event.timestamp,
+          billedAt: event.billedAt,
+          tenant: event.tenant,
+        })),
+        nextCursor,
       };
     }),
 });

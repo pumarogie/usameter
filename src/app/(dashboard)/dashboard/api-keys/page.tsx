@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useOrganization, useUser } from "@clerk/nextjs";
 import {
   Key,
   Plus,
@@ -9,8 +9,7 @@ import {
   Check,
   Trash2,
   RotateCw,
-  Eye,
-  EyeOff,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -40,62 +39,61 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Mock data - in production, fetch from tRPC
-const mockApiKeys = [
-  {
-    id: "1",
-    name: "Production",
-    keyPrefix: "usa_abc12345",
-    permissions: ["events:write", "usage:read"],
-    lastUsedAt: new Date("2024-12-26"),
-    createdAt: new Date("2024-10-15"),
-  },
-  {
-    id: "2",
-    name: "Development",
-    keyPrefix: "usa_dev98765",
-    permissions: ["events:write", "usage:read"],
-    lastUsedAt: new Date("2024-12-25"),
-    createdAt: new Date("2024-11-20"),
-  },
-  {
-    id: "3",
-    name: "Testing",
-    keyPrefix: "usa_test1234",
-    permissions: ["events:write"],
-    lastUsedAt: null,
-    createdAt: new Date("2024-12-01"),
-  },
-];
+import { trpc } from "@/lib/trpc/react";
 
 export default function ApiKeysPage() {
   const { user } = useUser();
-  const [apiKeys, setApiKeys] = useState(mockApiKeys);
+  const { organization } = useOrganization();
   const [newKeyName, setNewKeyName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showKeyDialog, setShowKeyDialog] = useState(false);
 
+  const utils = trpc.useUtils();
+
+  // Fetch API keys from database
+  const { data: apiKeys, isLoading } = trpc.apiKeys.list.useQuery(
+    { organizationId: organization?.id ?? "" },
+    { enabled: !!organization?.id },
+  );
+
+  // Create API key mutation
+  const createMutation = trpc.apiKeys.create.useMutation({
+    onSuccess: (data) => {
+      setNewKey(data.key);
+      setNewKeyName("");
+      setShowCreateDialog(false);
+      setShowKeyDialog(true);
+      utils.apiKeys.list.invalidate();
+    },
+  });
+
+  // Revoke API key mutation
+  const revokeMutation = trpc.apiKeys.revoke.useMutation({
+    onSuccess: () => {
+      utils.apiKeys.list.invalidate();
+    },
+  });
+
+  // Rotate API key mutation
+  const rotateMutation = trpc.apiKeys.rotate.useMutation({
+    onSuccess: (data) => {
+      setNewKey(data.key);
+      setShowKeyDialog(true);
+      utils.apiKeys.list.invalidate();
+    },
+  });
+
   const handleCreateKey = () => {
-    // In production, call tRPC mutation
-    const mockNewKey = `usa_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    setNewKey(mockNewKey);
-    setApiKeys([
-      {
-        id: String(apiKeys.length + 1),
-        name: newKeyName,
-        keyPrefix: mockNewKey.substring(0, 12),
-        permissions: ["events:write", "usage:read"],
-        lastUsedAt: null,
-        createdAt: new Date(),
-      },
-      ...apiKeys,
-    ]);
-    setNewKeyName("");
-    setShowCreateDialog(false);
-    setShowKeyDialog(true);
+    if (!organization?.id || !user?.id) return;
+
+    createMutation.mutate({
+      organizationId: organization.id,
+      name: newKeyName,
+      createdBy: user.id,
+      permissions: ["events:write", "usage:read"],
+    });
   };
 
   const handleCopyKey = async () => {
@@ -107,8 +105,39 @@ export default function ApiKeysPage() {
   };
 
   const handleDeleteKey = (id: string) => {
-    setApiKeys(apiKeys.filter((key) => key.id !== id));
+    if (!organization?.id) return;
+    revokeMutation.mutate({ id, organizationId: organization.id });
   };
+
+  const handleRotateKey = (id: string) => {
+    if (!organization?.id || !user?.id) return;
+    rotateMutation.mutate({
+      id,
+      organizationId: organization.id,
+      createdBy: user.id,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
+          <p className="text-muted-foreground">
+            Please select an organization to manage API keys.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -152,8 +181,18 @@ export default function ApiKeysPage() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleCreateKey} disabled={!newKeyName.trim()}>
-                Create Key
+              <Button
+                onClick={handleCreateKey}
+                disabled={!newKeyName.trim() || createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Key"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -209,7 +248,7 @@ export default function ApiKeysPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {apiKeys.length === 0 ? (
+          {!apiKeys || apiKeys.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Key className="h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold">No API keys yet</h3>
@@ -247,7 +286,7 @@ export default function ApiKeysPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {key.permissions.map((perm) => (
+                        {key.permissions.map((perm: string) => (
                           <Badge
                             key={perm}
                             variant="secondary"
@@ -260,20 +299,31 @@ export default function ApiKeysPage() {
                     </TableCell>
                     <TableCell>
                       {key.lastUsedAt
-                        ? key.lastUsedAt.toLocaleDateString()
+                        ? new Date(key.lastUsedAt).toLocaleDateString()
                         : "Never"}
                     </TableCell>
-                    <TableCell>{key.createdAt.toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {new Date(key.createdAt).toLocaleDateString()}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" title="Rotate key">
-                          <RotateCw className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Rotate key"
+                          onClick={() => handleRotateKey(key.id)}
+                          disabled={rotateMutation.isPending}
+                        >
+                          <RotateCw
+                            className={`h-4 w-4 ${rotateMutation.isPending ? "animate-spin" : ""}`}
+                          />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           title="Delete key"
                           onClick={() => handleDeleteKey(key.id)}
+                          disabled={revokeMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

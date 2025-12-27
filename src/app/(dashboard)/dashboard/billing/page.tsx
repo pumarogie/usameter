@@ -22,10 +22,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
+import { trpc } from "@/lib/trpc/react";
 
 function BillingContent() {
   const searchParams = useSearchParams();
   const success = searchParams.get("success");
+  const { organization } = useOrganization();
 
   useEffect(() => {
     if (success) {
@@ -34,20 +36,83 @@ function BillingContent() {
     }
   }, [success]);
 
-  // Mock data - in production, fetch from tRPC
+  // Fetch subscription data
+  const { data: subscriptionData, isLoading: subscriptionLoading } =
+    trpc.subscription.getCurrentSubscription.useQuery(
+      { organizationId: organization?.id ?? "" },
+      { enabled: !!organization?.id },
+    );
+
+  // Fetch usage data for current period
+  const { data: usageData, isLoading: usageLoading } =
+    trpc.subscription.getUsageForPeriod.useQuery(
+      { organizationId: organization?.id ?? "" },
+      { enabled: !!organization?.id },
+    );
+
+  // Create portal session mutation
+  const createPortalSession = trpc.subscription.createPortalSession.useMutation(
+    {
+      onSuccess: (data) => {
+        if (data.sessionUrl) {
+          window.location.href = data.sessionUrl;
+        }
+      },
+    },
+  );
+
+  const isLoading = subscriptionLoading || usageLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
+          <p className="text-muted-foreground">
+            Please select an organization to view billing information.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Extract data from tRPC responses
   const subscription = {
-    plan: "Growth",
-    status: "active",
-    currentPeriodEnd: new Date("2025-01-27"),
-    basePrice: 99,
+    plan: subscriptionData?.plan?.name ?? "No plan",
+    status: subscriptionData?.status ?? "inactive",
+    currentPeriodEnd: subscriptionData?.currentPeriodEnd
+      ? new Date(subscriptionData.currentPeriodEnd)
+      : null,
+    basePrice: subscriptionData?.plan?.basePrice
+      ? subscriptionData.plan.basePrice / 100
+      : 0,
+    includedEvents: subscriptionData?.plan?.includedEvents ?? 0,
+    cancelAtPeriodEnd: subscriptionData?.cancelAtPeriodEnd ?? false,
   };
 
   const usage = {
-    total: 456789,
-    included: 500000,
-    percentUsed: 91.4,
-    overage: 0,
-    estimatedCost: 99,
+    total: usageData?.usage?.total ?? 0,
+    included: usageData?.usage?.included ?? 0,
+    percentUsed: usageData?.usage?.percentUsed ?? 0,
+    overage: usageData?.usage?.overage ?? 0,
+    estimatedCost: usageData?.cost?.estimated
+      ? usageData.cost.estimated / 100
+      : 0,
+    baseCost: usageData?.cost?.base ? usageData.cost.base / 100 : 0,
+    overageCost: usageData?.cost?.overage ? usageData.cost.overage / 100 : 0,
+  };
+
+  const handleManageSubscription = () => {
+    if (!organization?.id) return;
+    createPortalSession.mutate({ organizationId: organization.id });
   };
 
   return (
@@ -78,6 +143,18 @@ function BillingContent() {
         </Card>
       )}
 
+      {subscription.cancelAtPeriodEnd && (
+        <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+          <CardContent className="flex items-center gap-3 py-4">
+            <Calendar className="h-5 w-5 text-yellow-600" />
+            <p className="text-yellow-800 dark:text-yellow-200">
+              Your subscription will be canceled at the end of the current
+              billing period.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -87,8 +164,13 @@ function BillingContent() {
           <CardContent>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold">{subscription.plan}</span>
-              <Badge variant="secondary" className="capitalize">
-                {subscription.status}
+              <Badge
+                variant={
+                  subscription.status === "ACTIVE" ? "default" : "secondary"
+                }
+                className="capitalize"
+              >
+                {subscription.status.toLowerCase()}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -110,7 +192,13 @@ function BillingContent() {
             </div>
             <div className="mt-2 h-2 w-full rounded-full bg-muted">
               <div
-                className="h-2 rounded-full bg-primary"
+                className={`h-2 rounded-full ${
+                  usage.percentUsed > 100
+                    ? "bg-red-500"
+                    : usage.percentUsed > 90
+                      ? "bg-yellow-500"
+                      : "bg-primary"
+                }`}
                 style={{ width: `${Math.min(usage.percentUsed, 100)}%` }}
               />
             </div>
@@ -130,13 +218,21 @@ function BillingContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {subscription.currentPeriodEnd.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
+              {subscription.currentPeriodEnd
+                ? subscription.currentPeriodEnd.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "-"}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Estimated: ${usage.estimatedCost}
+              Estimated: ${usage.estimatedCost.toFixed(0)}
+              {usage.overageCost > 0 && (
+                <span className="text-red-500">
+                  {" "}
+                  (+${usage.overageCost.toFixed(0)} overage)
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -158,8 +254,13 @@ function BillingContent() {
             <Separator />
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
-              <Badge variant="secondary" className="capitalize">
-                {subscription.status}
+              <Badge
+                variant={
+                  subscription.status === "ACTIVE" ? "default" : "secondary"
+                }
+                className="capitalize"
+              >
+                {subscription.status.toLowerCase()}
               </Badge>
             </div>
             <Separator />
@@ -176,14 +277,28 @@ function BillingContent() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Included Events</span>
               <span className="font-medium">
-                {usage.included.toLocaleString()}
+                {subscription.includedEvents.toLocaleString()}
               </span>
             </div>
-            <div className="pt-4">
-              <Button className="w-full" variant="outline">
-                Manage Subscription
-              </Button>
-            </div>
+            {subscriptionData && (
+              <div className="pt-4">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={handleManageSubscription}
+                  disabled={createPortalSession.isPending}
+                >
+                  {createPortalSession.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Manage Subscription"
+                  )}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -205,9 +320,11 @@ function BillingContent() {
                 View Invoices
               </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start">
-              <TrendingUp className="mr-2 h-4 w-4" />
-              Download Usage Report
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/dashboard/usage">
+                <TrendingUp className="mr-2 h-4 w-4" />
+                View Usage Details
+              </Link>
             </Button>
           </CardContent>
         </Card>

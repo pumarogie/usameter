@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, ExternalLink, FileText } from "lucide-react";
+import { useOrganization } from "@clerk/nextjs";
+import { Download, ExternalLink, FileText, Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,54 +19,52 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Mock data - in production, fetch from tRPC
-const invoices = [
-  {
-    id: "inv_1",
-    number: "INV-2024-001",
-    date: new Date("2024-12-01"),
-    amount: 99,
-    status: "paid",
-    pdfUrl: "#",
-  },
-  {
-    id: "inv_2",
-    number: "INV-2024-002",
-    date: new Date("2024-11-01"),
-    amount: 99,
-    status: "paid",
-    pdfUrl: "#",
-  },
-  {
-    id: "inv_3",
-    number: "INV-2024-003",
-    date: new Date("2024-10-01"),
-    amount: 127,
-    status: "paid",
-    pdfUrl: "#",
-  },
-  {
-    id: "inv_4",
-    number: "INV-2024-004",
-    date: new Date("2024-09-01"),
-    amount: 99,
-    status: "paid",
-    pdfUrl: "#",
-  },
-];
+import { trpc } from "@/lib/trpc/react";
 
 const statusColors: Record<
   string,
   "default" | "secondary" | "destructive" | "outline"
 > = {
   paid: "default",
-  pending: "secondary",
-  failed: "destructive",
+  open: "secondary",
+  void: "outline",
+  uncollectible: "destructive",
   draft: "outline",
 };
 
 export default function InvoicesPage() {
+  const { organization } = useOrganization();
+
+  // Fetch invoices from Stripe via tRPC
+  const { data: invoicesData, isLoading } =
+    trpc.subscription.getStripeInvoices.useQuery(
+      { organizationId: organization?.id ?? "" },
+      { enabled: !!organization?.id },
+    );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+          <p className="text-muted-foreground">
+            Please select an organization to view invoices.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const invoices = invoicesData?.invoices ?? [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -105,39 +104,51 @@ export default function InvoicesPage() {
                 {invoices.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">
-                      {invoice.number}
+                      {invoice.number || invoice.id.slice(0, 12)}
                     </TableCell>
                     <TableCell>
-                      {invoice.date.toLocaleDateString("en-US", {
+                      {new Date(invoice.created).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "short",
                         day: "numeric",
                       })}
                     </TableCell>
-                    <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                    <TableCell>${(invoice.amount / 100).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={statusColors[invoice.status] || "default"}
+                        variant={
+                          statusColors[invoice.status ?? "draft"] || "default"
+                        }
                       >
-                        {invoice.status}
+                        {invoice.status ?? "draft"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <a
-                            href={invoice.pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={invoice.pdfUrl} download>
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </Button>
+                        {invoice.hostedInvoiceUrl && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a
+                              href={invoice.hostedInvoiceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View invoice"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
+                        {invoice.pdfUrl && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a
+                              href={invoice.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
