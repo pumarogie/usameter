@@ -105,7 +105,7 @@ export function UsageDashboard({ tenantId }: DashboardProps) {
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <div className="text-sm text-gray-500">Events Today</div>
           <div className="text-2xl font-bold">
-            {usageByType?.reduce((sum, item) => sum + item.eventCount, 0) ?? 0}
+            {usageByType?.reduce((sum: number, item) => sum + item.eventCount, 0) ?? 0}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">

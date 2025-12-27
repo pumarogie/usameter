@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       });
 
       return NextResponse.json({
-        usage: usage.map((u) => ({
+        usage: usage.map((u: typeof usage[number]) => ({
           event_type: u.eventType,
           total_quantity: Number(u._sum.quantity || 0),
           event_count: u._count,
@@ -103,15 +103,15 @@ export async function GET(req: NextRequest) {
       });
 
       // Get tenant external IDs
-      const tenantIds = usage.map((u) => u.tenantId);
+      const tenantIds = usage.map((u: typeof usage[number]) => u.tenantId);
       const tenants = await prisma.tenant.findMany({
         where: { id: { in: tenantIds } },
         select: { id: true, externalId: true },
       });
-      const tenantMap = new Map(tenants.map((t) => [t.id, t.externalId]));
+      const tenantMap = new Map(tenants.map((t: { id: string; externalId: string }) => [t.id, t.externalId]));
 
       return NextResponse.json({
-        usage: usage.map((u) => ({
+        usage: usage.map((u: typeof usage[number]) => ({
           tenant_id: tenantMap.get(u.tenantId) || u.tenantId,
           total_quantity: Number(u._sum.quantity || 0),
           event_count: u._count,
@@ -132,7 +132,8 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      const dailyUsage = events.reduce((acc, event) => {
+      type DailyUsage = Record<string, { total_quantity: number; event_count: number }>;
+      const dailyUsage = events.reduce((acc: DailyUsage, event: typeof events[number]) => {
         const day = event.timestamp.toISOString().split("T")[0]!;
         if (!acc[day]) {
           acc[day] = { total_quantity: 0, event_count: 0 };
@@ -140,10 +141,10 @@ export async function GET(req: NextRequest) {
         acc[day].total_quantity += Number(event.quantity);
         acc[day].event_count += 1;
         return acc;
-      }, {} as Record<string, { total_quantity: number; event_count: number }>);
+      }, {} as DailyUsage);
 
       return NextResponse.json({
-        usage: Object.entries(dailyUsage)
+        usage: (Object.entries(dailyUsage) as [string, { total_quantity: number; event_count: number }][])
           .map(([date, data]) => ({
             date,
             ...data,

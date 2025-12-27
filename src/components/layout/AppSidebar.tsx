@@ -5,17 +5,10 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Activity,
-  Calendar,
-  FileText,
   CreditCard,
-  Receipt,
-  Wallet,
   Users,
   Key,
   Settings,
-  Building2,
-  UserCog,
-  Plug,
   ChevronDown,
 } from "lucide-react";
 

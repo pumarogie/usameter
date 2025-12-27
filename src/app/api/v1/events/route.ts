@@ -86,7 +86,7 @@ async function findOrCreateTenants(
       )
     );
 
-    created.forEach((t) => tenantMap.set(t.externalId, t.id));
+    created.forEach((t: { id: string; externalId: string }) => tenantMap.set(t.externalId, t.id));
   }
 
   return tenantMap;
@@ -132,7 +132,7 @@ async function checkIdempotency(
       select: { id: true, idempotencyKey: true },
     });
 
-    existingEvents.forEach((e) => {
+    existingEvents.forEach((e: { id: string; idempotencyKey: string | null }) => {
       if (e.idempotencyKey) {
         duplicates.set(e.idempotencyKey, e.id);
         // Cache in Redis for future lookups
@@ -495,7 +495,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
-      events: events.map((e) => ({
+      events: events.map((e: typeof events[number]) => ({
         id: e.id,
         tenant_id: e.tenant.externalId,
         event_type: e.eventType,
