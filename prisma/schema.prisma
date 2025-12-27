@@ -1,0 +1,352 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum QuotaLimitType {
+  MONTHLY
+  ROLLING_30D
+  CUSTOM
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenants       Tenant[]
+  pricingTiers  PricingTier[]
+  usageEvents   UsageEvent[]
+  snapshots     UsageSnapshot[]
+  invoices      Invoice[]
+  auditLogs     AuditLog[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model Tenant {
+  id             String       @id @default(cuid())
+  organizationId String
+  externalId     String
+  name           String
+  status         TenantStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  usageEvents    UsageEvent[]
+  snapshots      UsageSnapshot[]
+  invoices       Invoice[]
+  quotaLimits    QuotaLimit[]
+  auditLogs      AuditLog[]
+
+  @@unique([organizationId, externalId])
+  @@index([organizationId])
+  @@index([organizationId, externalId])
+  @@index([status])
+  @@map("tenants")
+}
+
+model UsageEvent {
+  id             String   @id @default(cuid())
+  tenantId       String
+  organizationId String
+  eventType      String
+  quantity       Decimal  @default(1) @db.Decimal(20, 6)
+  metadata       Json?
+  timestamp      DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  // Idempotency key for deduplication (prevents duplicate events on retry)
+  idempotencyKey String?
+
+  // Audit trail: link events to invoices for billing reconciliation
+  invoiceId      String?
+  billedAt       DateTime?
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([tenantId, timestamp])
+  @@index([organizationId, timestamp])
+  @@index([tenantId, eventType, timestamp])
+  @@index([eventType, timestamp])
+  @@index([invoiceId])
+  @@index([tenantId, billedAt])
+  @@map("usage_events")
+}
+
+model UsageSnapshot {
+  id             String   @id @default(cuid())
+  tenantId       String
+  organizationId String
+  snapshotDate   DateTime @db.Date
+  eventType      String
+  totalQuantity  Decimal  @db.Decimal(20, 6)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, snapshotDate, eventType])
+  @@index([tenantId, snapshotDate])
+  @@index([organizationId, snapshotDate])
+  @@index([snapshotDate])
+  @@map("usage_snapshots")
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  tenantId       String
+  organizationId String
+  invoiceNumber  String        @unique
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         InvoiceStatus @default(DRAFT)
+  subtotal       Decimal       @db.Decimal(20, 2)
+  tax            Decimal       @default(0) @db.Decimal(20, 2)
+  total          Decimal       @db.Decimal(20, 2)
+  dueDate        DateTime
+  paidAt         DateTime?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lineItems    InvoiceLineItem[]
+  usageEvents  UsageEvent[]      // Audit trail: events included in this invoice
+
+  @@index([tenantId, status])
+  @@index([organizationId, periodStart])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  eventType   String
+  quantity    Decimal  @db.Decimal(20, 6)
+  unitPrice   Decimal  @db.Decimal(20, 6)
+  totalPrice  Decimal  @db.Decimal(20, 2)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([eventType])
+  @@map("invoice_line_items")
+}
+
+model PricingTier {
+  id             String    @id @default(cuid())
+  organizationId String
+  eventType      String
+  tierLevel      Int
+  minQuantity    Decimal   @db.Decimal(20, 6)
+  maxQuantity    Decimal?  @db.Decimal(20, 6)
+  unitPrice      Decimal   @db.Decimal(20, 6)
+  effectiveFrom  DateTime  @default(now())
+  effectiveTo    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, eventType])
+  @@index([organizationId, eventType, effectiveFrom])
+  @@map("pricing_tiers")
+}
+
+enum QuotaEnforcementMode {
+  HARD      // Block immediately when limit reached
+  SOFT      // Allow with warning, block at hard limit
+  DISABLED  // Track but don't enforce
+}
+
+model QuotaLimit {
+  id              String               @id @default(cuid())
+  tenantId        String
+  eventType       String
+  limitType       QuotaLimitType
+  limitValue      Decimal              @db.Decimal(20, 6)
+  resetAt         DateTime
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Soft limit and grace period support
+  softLimitValue  Decimal?             @db.Decimal(20, 6)  // Warning threshold (e.g., 80% of limit)
+  enforcementMode QuotaEnforcementMode @default(HARD)
+  gracePeriodEnd  DateTime?            // Allow overage until this time
+  overageAllowed  Decimal?             @db.Decimal(20, 6)  // Max overage allowed in soft mode
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, eventType])
+  @@index([tenantId, eventType])
+  @@index([resetAt])
+  @@map("quota_limits")
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  tenantId       String?
+  organizationId String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  changes        Json?
+  userId         String?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  tenant       Tenant?       @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Rate limiting configuration per API key or organization
+model RateLimit {
+  id             String   @id @default(cuid())
+  organizationId String
+  apiKeyId       String?  // Optional: specific to an API key
+
+  // Rate limit configuration
+  requestsPerSecond  Int?     // Max requests per second
+  requestsPerMinute  Int?     // Max requests per minute
+  requestsPerHour    Int?     // Max requests per hour
+  burstLimit         Int?     // Max burst size for token bucket
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, apiKeyId])
+  @@index([organizationId])
+  @@index([apiKeyId])
+  @@map("rate_limits")
+}
+
+// Stripe Subscription Models
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+  UNPAID
+}
+
+model SubscriptionPlan {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  stripePriceId   String   @unique
+  basePrice       Int      // cents per month
+  includedEvents  Int      // events included in plan
+  overageRate     Int      // cents per 1000 events over limit
+  features        Json     // feature flags
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  organizationId         String
+  stripeCustomerId       String
+  stripeSubscriptionId   String             @unique
+  stripePriceId          String?
+  planId                 String
+  status                 SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  cancelAtPeriodEnd      Boolean            @default(false)
+  canceledAt             DateTime?
+  trialEnd               DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([organizationId])
+  @@index([stripeCustomerId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// API Keys Model
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  name           String
+  keyHash        String    @unique
+  keyPrefix      String    // "usa_" + first 8 chars for display
+  organizationId String
+  createdBy      String    // clerk user id
+  permissions    Json      // ["events:write", "usage:read"]
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+  @@index([keyPrefix])
+  @@map("api_keys")
+}
+
+// Team/Invitation Models (for custom team management beyond Clerk)
+
+model TeamInvitation {
+  id             String   @id @default(cuid())
+  email          String
+  organizationId String
+  role           String   // owner, admin, member, viewer
+  token          String   @unique
+  invitedBy      String   // clerk user id
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([email])
+  @@index([organizationId])
+  @@index([token])
+  @@map("team_invitations")
+}
+
