@@ -9,7 +9,12 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Error - Usameter</title>
+      </head>
+      <body style={{ margin: 0, padding: 0 }}>
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -47,4 +52,3 @@ export default function GlobalError({
     </html>
   );
 }
-
